@@ -61,7 +61,7 @@ export default function MessageInput({ onSendMessage, isLoading }: MessageInputP
                 disabled={isLoading || !message.trim()}
                 className="text-white bg-primary-600 hover:bg-primary-700 rounded-full w-10 h-10 flex items-center justify-center transition"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-5 w-5 text-white" />
               </Button>
             </div>
           </div>

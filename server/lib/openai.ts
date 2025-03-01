@@ -44,6 +44,10 @@ export async function chatWithDocumentation(
       const metadata = doc.chunk.metadata as Record<string, any>;
       const path = metadata && metadata.path ? metadata.path : "unknown";
       console.log(`  ${index + 1}. ${path} - Score: ${doc.similarity.toFixed(4)}`);
+      
+      // Log the first 100 chars of content for debugging
+      const previewContent = doc.chunk.content.substring(0, 100).replace(/\n/g, ' ') + '...';
+      console.log(`     Preview: ${previewContent}`);
     });
   } else {
     console.log("No relevant documentation chunks found. Check vector storage and embedding creation.");
@@ -65,17 +69,32 @@ export async function chatWithDocumentation(
     })
     .join("\n\n");
 
+  // Log the full context length for debugging
+  console.log(`Documentation context length: ${documentationContext.length} characters`);
+  
   // Construct the messages array with system prompt, history, and the current question with context
+  const userMessage = `
+Question: ${question}
+
+I've found the following relevant documentation that should help answer your question:
+
+${documentationContext}
+
+Please answer the question based on ONLY this documentation. If the documentation does NOT contain enough information to answer the question fully, focus on what information IS available and acknowledge any limitations.
+`;
+
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...chatHistory,
-    {
-      role: "user",
-      content: `Question: ${question}\n\nRelevant documentation:\n${documentationContext}`
-    }
+    { role: "user", content: userMessage }
   ];
 
   try {
+    // Log the full system prompt and first part of user message for debugging
+    console.log(`OpenAI System Prompt (${SYSTEM_PROMPT.length} chars): ${SYSTEM_PROMPT.substring(0, 100)}...`);
+    console.log(`OpenAI User Message Preview (first 200 chars): ${userMessage.substring(0, 200)}...`);
+    
+    // Call OpenAI API
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: messages as any,
@@ -83,7 +102,11 @@ export async function chatWithDocumentation(
       max_tokens: 1000,
     });
 
-    return response.choices[0].message.content || "I couldn't generate a response.";
+    // Log the response for debugging
+    const responseContent = response.choices[0].message.content || "I couldn't generate a response.";
+    console.log(`OpenAI Response Preview (first 100 chars): ${responseContent.substring(0, 100)}...`);
+    
+    return responseContent;
   } catch (error) {
     console.error("Error calling OpenAI:", error);
     return "Sorry, I encountered an error while processing your question. Please try again later.";

@@ -30,15 +30,25 @@ export async function fetchRepositoryFiles(
   branch: string = "main"
 ): Promise<GitHubRepoContent> {
   // Extract owner and repo from URL
-  const urlParts = repoUrl.replace(/\.git$/, "").split("/");
-  const owner = urlParts[urlParts.length - 2];
-  const repo = urlParts[urlParts.length - 1];
-
+  // Handle different GitHub URL formats
+  const githubRegex = /github\.com\/([^\/]+)\/([^\/]+)/;
+  const match = repoUrl.match(githubRegex);
+  
+  if (!match || match.length < 3) {
+    throw new Error(`Invalid GitHub URL: ${repoUrl}. Expected format: https://github.com/owner/repo`);
+  }
+  
+  const owner = match[1];
+  const repo = match[2].replace(/\.git$/, "");
+  
+  console.log(`Parsed GitHub URL: Owner=${owner}, Repo=${repo}`);
+  
   if (!owner || !repo) {
     throw new Error(`Invalid GitHub URL: ${repoUrl}`);
   }
 
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+  // Instead of using the git/trees endpoint, use the contents endpoint to get all files
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents?ref=${branch}`;
   
   const headers: Record<string, string> = {
     "Accept": "application/vnd.github.v3+json",
@@ -58,10 +68,25 @@ export async function fetchRepositoryFiles(
       throw new Error(`GitHub API Error: ${error.message}`);
     }
 
-    const data = await response.json() as { tree: { path: string; type: string; url: string; }[] };
+    const data = await response.json() as GitHubFile[];
     
-    // Filter only Markdown files and extract their paths
-    const markdownFiles = data.tree.filter(item => item.path.endsWith('.md') && item.type === 'blob');
+    // First, get all the files in the top-level directory
+    const allFiles: GitHubFile[] = [];
+    
+    // Process initial directory
+    for (const item of data) {
+      if (item.type === 'file' && item.name.endsWith('.md')) {
+        allFiles.push(item);
+      } else if (item.type === 'dir') {
+        // Fetch subdirectory contents recursively
+        await processDirectory(owner, repo, branch, item.path, allFiles);
+      }
+    }
+    
+    console.log(`Found ${allFiles.length} Markdown files in repository`);
+    
+    // Filter only Markdown files
+    const markdownFiles = allFiles;
     
     const files: InsertDocumentationFile[] = [];
     const images: InsertDocumentationImage[] = [];
@@ -138,6 +163,47 @@ async function fetchFileContent(
   } catch (error) {
     console.error(`Error fetching file content for ${path}:`, error);
     throw error;
+  }
+}
+
+// Process subdirectories recursively
+async function processDirectory(
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  allFiles: GitHubFile[]
+): Promise<void> {
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  
+  const headers: Record<string, string> = {
+    "Accept": "application/vnd.github.v3+json",
+  };
+  
+  if (process.env.GITHUB_TOKEN) {
+    headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+  }
+
+  try {
+    const response = await fetch(apiUrl, { headers });
+    
+    if (!response.ok) {
+      const error: GitHubApiError = await response.json() as GitHubApiError;
+      throw new Error(`GitHub API Error: ${error.message}`);
+    }
+
+    const data = await response.json() as GitHubFile[];
+    
+    for (const item of data) {
+      if (item.type === 'file' && item.name.endsWith('.md')) {
+        allFiles.push(item);
+      } else if (item.type === 'dir') {
+        // Recursively process subdirectories
+        await processDirectory(owner, repo, branch, item.path, allFiles);
+      }
+    }
+  } catch (error) {
+    console.error(`Error processing directory ${path}:`, error);
   }
 }
 

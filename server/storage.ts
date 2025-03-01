@@ -479,7 +479,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocumentationFile(file: InsertDocumentationFile): Promise<DocumentationFile> {
-    const [createdFile] = await db.insert(documentationFiles).values(file).returning();
+    // Ensure all required fields have values
+    const fileToInsert = {
+      ...file,
+      hasImages: file.hasImages ?? false,
+      githubUrl: file.githubUrl ?? null
+    };
+    
+    const [createdFile] = await db.insert(documentationFiles).values(fileToInsert).returning();
     return createdFile;
   }
 
@@ -517,7 +524,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocumentationImage(image: InsertDocumentationImage): Promise<DocumentationImage> {
-    const [createdImage] = await db.insert(documentationImages).values(image).returning();
+    // Ensure all required fields have values
+    const imageToInsert = {
+      ...image,
+      fileId: image.fileId ?? 0, // This should be a valid file ID in production
+      alt: image.alt ?? null
+    };
+    
+    const [createdImage] = await db.insert(documentationImages).values(imageToInsert).returning();
     return createdImage;
   }
 

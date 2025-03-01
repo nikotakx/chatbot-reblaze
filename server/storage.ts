@@ -573,7 +573,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocumentationChunk(chunk: InsertDocumentationChunk): Promise<DocumentationChunk> {
-    const [createdChunk] = await db.insert(documentationChunks).values(chunk).returning();
+    // Ensure all required fields have values
+    const chunkToInsert = {
+      ...chunk,
+      fileId: chunk.fileId ?? 0, // This should be a valid file ID in production
+      embedding: chunk.embedding ?? null
+    };
+    
+    const [createdChunk] = await db.insert(documentationChunks).values(chunkToInsert).returning();
     return createdChunk;
   }
 
@@ -608,7 +615,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRepositoryConfig(config: InsertRepositoryConfig): Promise<RepositoryConfig> {
-    const [createdConfig] = await db.insert(repositoryConfig).values(config).returning();
+    // Ensure all required fields have values
+    const configToInsert = {
+      ...config,
+      isActive: config.isActive ?? true,
+      lastSynced: config.lastSynced ?? null
+    };
+    
+    const [createdConfig] = await db.insert(repositoryConfig).values(configToInsert).returning();
     return createdConfig;
   }
 

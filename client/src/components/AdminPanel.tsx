@@ -23,7 +23,7 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [repoUrl, setRepoUrl] = useState("");
-  const [branch, setBranch] = useState("main");
+  const [branch, setBranch] = useState("v2.x");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<DocumentationFile | null>(null);
 
@@ -258,6 +258,10 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
                   <SelectItem value="master">master</SelectItem>
                   <SelectItem value="develop">develop</SelectItem>
                   <SelectItem value="staging">staging</SelectItem>
+                  {/* Add possible branches for reblaze/gitbook-manual-2x */}
+                  <SelectItem value="v2.x">v2.x</SelectItem>
+                  <SelectItem value="v3.x">v3.x</SelectItem>
+                  <SelectItem value="docs">docs</SelectItem>
                 </SelectContent>
               </Select>
             </div>

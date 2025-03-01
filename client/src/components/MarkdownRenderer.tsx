@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 interface MarkdownRendererProps {
@@ -12,36 +11,62 @@ interface MarkdownRendererProps {
 const PLACEHOLDER_IMAGE_URL = "https://via.placeholder.com/400x300?text=Image+Not+Available";
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const [html, setHtml] = useState("");
+  const [html, setHtml] = useState<string>("");
   
   useEffect(() => {
-    // Process the content to fix image paths and references
-    let processedContent = content;
+    if (!content) {
+      setHtml("");
+      return;
+    }
     
-    // Use a simpler approach - preprocess the Markdown to replace relative image paths
-    // Find all markdown image references ![alt](path) and adjust the paths
-    const imgRegex = /!\[(.*?)\]\((.*?)\)/g;
-    processedContent = processedContent.replace(imgRegex, (match, alt, path) => {
-      // Skip if it's already an absolute URL
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        return match;
-      }
+    try {
+      // Instead of relying on marked.js which has issues with some image tags,
+      // we'll just handle the HTML/Markdown formatting ourselves with a two-step process:
       
-      // Replace relative paths with placeholder
-      if (path.includes('.gitbook/assets') || path.startsWith('../') || path.startsWith('./')) {
-        return `![${alt}](${PLACEHOLDER_IMAGE_URL})`;
-      }
+      // 1. First replace any HTML image tags that don't use http/https with our placeholder
+      let processedHtml = content.replace(
+        /<img[^>]*src=["'](?!http[s]?:\/\/)([^"']*)["'][^>]*>/gi,
+        `<img src="${PLACEHOLDER_IMAGE_URL}" alt="Documentation Image" class="rounded-md max-w-full my-4" />`
+      );
       
-      // Default case - use placeholder for all other non-absolute URLs
-      return `![${alt}](${PLACEHOLDER_IMAGE_URL})`;
-    });
-    
-    // Convert the processed Markdown to HTML
-    const rawHtml = marked.parse(processedContent);
-    
-    // Sanitize HTML
-    const sanitizedHtml = DOMPurify.sanitize(rawHtml);
-    setHtml(sanitizedHtml);
+      // 2. Also replace any HTML image tags with Google Drive URLs (lh*.googleusercontent.com)
+      // These are absolute URLs but we still want to render them properly
+      processedHtml = processedHtml.replace(
+        /<img[^>]*src=["'](https?:\/\/lh[0-9]\.googleusercontent\.com\/[^"']*)["'][^>]*>/gi,
+        `<img src="$1" alt="Documentation Image" class="rounded-md max-w-full my-4" />`
+      );
+      
+      // 3. Also handle normal Markdown image syntax
+      processedHtml = processedHtml.replace(
+        /!\[(.*?)\]\((?!http[s]?:\/\/)([^)]*)\)/g,
+        `![Document Image](${PLACEHOLDER_IMAGE_URL})`
+      );
+      
+      // 4. Keep Markdown image syntax for http/https URLs
+      processedHtml = processedHtml.replace(
+        /!\[(.*?)\]\((https?:\/\/[^)]*)\)/g,
+        `<img src="$2" alt="$1" class="rounded-md max-w-full my-4" />`
+      );
+      
+      // 5. Add basic Markdown paragraph formatting
+      processedHtml = processedHtml.replace(/\n\n/g, '</p><p>');
+      processedHtml = `<p>${processedHtml}</p>`;
+      
+      // 6. Configure DOMPurify to allow img tags
+      const purifyConfig = {
+        ADD_TAGS: ['img'],
+        ADD_ATTR: ['src', 'alt', 'title', 'class']
+      };
+      
+      // 7. Sanitize HTML - DOMPurify returns a string in browser environments
+      const sanitizedHtml = DOMPurify.sanitize(processedHtml, purifyConfig) as string;
+      setHtml(sanitizedHtml);
+    } catch (err) {
+      // Handle error with proper TypeScript type assertion
+      const error = err as Error;
+      console.error("Error processing markdown:", error);
+      setHtml(`<p>Error rendering content: ${error.message}</p>`);
+    }
   }, [content]);
 
   // Add some custom styling for the markdown content

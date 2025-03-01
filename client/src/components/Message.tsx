@@ -9,7 +9,7 @@ export default function Message({ message }: MessageProps) {
   const isUser = message.role === "user";
   
   return (
-    <div className={`flex mb-2 ${isUser ? "justify-end" : ""}`}>
+    <div className={`flex mb-4 ${isUser ? "justify-end" : ""}`}>
       <div 
         className={`${
           isUser 
@@ -17,10 +17,13 @@ export default function Message({ message }: MessageProps) {
             : "bg-white border border-gray-200 shadow-sm px-4 py-3 rounded-t-lg rounded-br-lg max-w-xl"
         }`}
       >
+        <div className="text-xs mb-1 font-medium">
+          {isUser ? "You" : "DocChat"}
+        </div>
         {isUser ? (
-          <p>{message.content}</p>
+          <p className="mt-1">{message.content}</p>
         ) : (
-          <div className="prose prose-sm">
+          <div className="prose prose-sm mt-1">
             <MarkdownRenderer content={message.content} />
           </div>
         )}

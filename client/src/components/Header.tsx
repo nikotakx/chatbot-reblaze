@@ -22,8 +22,7 @@ export default function Header({ onToggleAdmin }: HeaderProps) {
       </div>
       
       <div className="flex items-center space-x-4">
-        <ThemeSwitcher />
-        
+        {/* ThemeSwitcher removed as requested */}
         <button 
           onClick={onToggleAdmin}
           className="text-sm flex items-center space-x-1 text-muted-foreground hover:text-primary transition"

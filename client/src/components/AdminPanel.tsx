@@ -65,11 +65,70 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
     }
   });
 
+  // State for tracking refresh progress
+  const [refreshProgress, setRefreshProgress] = useState({
+    isRefreshing: false,
+    filesProcessed: 0,
+    totalFiles: 0
+  });
+  
   // Set up repository refresh mutation
   const refreshMutation = useMutation({
     mutationFn: async (data: { url: string; branch: string }) => {
-      const response = await apiRequest("POST", "/api/admin/refresh", data);
-      return response.json();
+      setRefreshProgress({
+        isRefreshing: true,
+        filesProcessed: 0,
+        totalFiles: 100 // Initial estimate
+      });
+      
+      // Start a periodic check for updated stats
+      const checkInterval = setInterval(async () => {
+        try {
+          // Poll for updated stats to track progress
+          const statsResponse = await apiRequest("GET", "/api/admin/stats");
+          const statsData = await statsResponse.json();
+          
+          if (statsData && statsData.fileCount > 0) {
+            setRefreshProgress(prev => ({
+              ...prev,
+              filesProcessed: statsData.fileCount,
+              totalFiles: Math.max(prev.totalFiles, statsData.fileCount + 10) // Adjust total estimate
+            }));
+          }
+        } catch (e) {
+          console.log("Error polling stats:", e);
+        }
+      }, 3000);
+      
+      try {
+        // Make the actual refresh request
+        const response = await apiRequest("POST", "/api/admin/refresh", data);
+        const result = await response.json();
+        
+        // Clear the polling interval
+        clearInterval(checkInterval);
+        
+        // Reset refresh progress
+        setRefreshProgress({
+          isRefreshing: false,
+          filesProcessed: result.filesProcessed || 0,
+          totalFiles: result.filesProcessed || 0
+        });
+        
+        return result;
+      } catch (error) {
+        // Clear the polling interval on error
+        clearInterval(checkInterval);
+        
+        // Reset refresh progress
+        setRefreshProgress({
+          isRefreshing: false,
+          filesProcessed: 0,
+          totalFiles: 0
+        });
+        
+        throw error;
+      }
     },
     onSuccess: (data) => {
       toast({
@@ -83,7 +142,7 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to refresh documentation",
+        description: "Failed to refresh documentation. Please try again.",
         variant: "destructive",
       });
       console.error("Failed to refresh documentation:", error);
@@ -266,22 +325,46 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
               </Select>
             </div>
             
-            <div className="flex space-x-2">
-              <Button 
-                className="flex-1"
-                onClick={handleConnectRepository}
-                disabled={!repoUrl || configMutation.isPending}
-              >
-                {configMutation.isPending ? "Connecting..." : "Connect Repository"}
-              </Button>
-              <Button 
-                className="flex-1" 
-                variant="outline"
-                onClick={handleRefreshRepository}
-                disabled={!repoUrl || refreshMutation.isPending}
-              >
-                {refreshMutation.isPending ? "Refreshing..." : "Refresh"}
-              </Button>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <Button 
+                  className="flex-1"
+                  onClick={handleConnectRepository}
+                  disabled={!repoUrl || configMutation.isPending || refreshMutation.isPending || refreshProgress.isRefreshing}
+                >
+                  {configMutation.isPending ? "Connecting..." : "Connect Repository"}
+                </Button>
+                <Button 
+                  className="flex-1" 
+                  variant="outline"
+                  onClick={handleRefreshRepository}
+                  disabled={!repoUrl || refreshMutation.isPending || refreshProgress.isRefreshing}
+                >
+                  {refreshMutation.isPending || refreshProgress.isRefreshing ? 
+                    <span className="flex items-center">
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Refreshing...
+                    </span> : 
+                    "Refresh"}
+                </Button>
+              </div>
+              
+              {/* Refresh Progress Indicator */}
+              {refreshProgress.isRefreshing && (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span>Processing documentation files</span>
+                    <span>{refreshProgress.filesProcessed} / {refreshProgress.totalFiles} files</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (refreshProgress.filesProcessed / refreshProgress.totalFiles) * 100)} 
+                    className="h-1" 
+                  />
+                  <p className="text-xs text-secondary-500 italic">
+                    This may take a few minutes for large repositories
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

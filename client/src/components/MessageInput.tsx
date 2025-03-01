@@ -59,7 +59,8 @@ export default function MessageInput({ onSendMessage, isLoading }: MessageInputP
                 type="submit" 
                 size="icon"
                 disabled={isLoading || !message.trim()}
-                className="text-white bg-primary-600 hover:bg-primary-700 rounded-full w-10 h-10 flex items-center justify-center transition"
+                className="text-white bg-blue-600 hover:bg-blue-700 rounded-full w-10 h-10 flex items-center justify-center transition"
+                style={{ backgroundColor: '#3b82f6' }} // Ensure a vibrant blue regardless of theme
               >
                 <Send className="h-5 w-5 text-white" />
               </Button>

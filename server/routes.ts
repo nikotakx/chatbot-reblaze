@@ -17,6 +17,7 @@ import {
 } from "./db/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { WebSocketServer, WebSocket } from "ws";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes (prefix with /api)
@@ -462,5 +463,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", apiRouter);
 
   const httpServer = createServer(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+
+  // Connected clients
+  const clients = new Set<WebSocket>();
+
+  // Event: client connection
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    clients.add(ws);
+
+    // Send initial connection message
+    ws.send(JSON.stringify({
+      type: 'connection',
+      message: 'Connected to Documentation Chatbot WebSocket server'
+    }));
+
+    // Event: message from client
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('WebSocket message received:', data);
+
+        // Echo back the message (for testing purposes)
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'echo',
+            data
+          }));
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            message: 'Invalid message format' 
+          }));
+        }
+      }
+    });
+
+    // Event: client disconnection
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+      clients.delete(ws);
+    });
+
+    // Event: error
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      clients.delete(ws);
+    });
+  });
+
+  // Utility function to broadcast a message to all connected clients
+  const broadcastMessage = (type: string, data: any) => {
+    const message = JSON.stringify({ type, data });
+    clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  };
+
+  // Export the broadcast function to the global scope so it can be used in other modules
+  (global as any).wsBroadcast = broadcastMessage;
+
   return httpServer;
 }

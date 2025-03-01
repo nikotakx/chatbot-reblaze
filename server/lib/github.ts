@@ -27,28 +27,39 @@ export interface GitHubRepoContent {
 
 export async function fetchRepositoryFiles(
   repoUrl: string,
-  branch: string = "main"
+  branch: string = "master"
 ): Promise<GitHubRepoContent> {
   // Extract owner and repo from URL
   // Handle different GitHub URL formats
   const githubRegex = /github\.com\/([^\/]+)\/([^\/]+)/;
   const match = repoUrl.match(githubRegex);
   
-  if (!match || match.length < 3) {
-    throw new Error(`Invalid GitHub URL: ${repoUrl}. Expected format: https://github.com/owner/repo`);
+  let owner: string;
+  let repo: string;
+  
+  if (match && match.length >= 3) {
+    owner = match[1];
+    repo = match[2].replace(/\.git$/, "");
+  } else {
+    // Try alternate format (owner/repo directly)
+    const parts = repoUrl.split('/');
+    if (parts.length >= 2) {
+      owner = parts[0];
+      repo = parts[1].replace(/\.git$/, "");
+    } else {
+      throw new Error(`Invalid GitHub URL: ${repoUrl}. Expected format: https://github.com/owner/repo or owner/repo`);
+    }
   }
   
-  const owner = match[1];
-  const repo = match[2].replace(/\.git$/, "");
-  
-  console.log(`Parsed GitHub URL: Owner=${owner}, Repo=${repo}`);
+  console.log(`Parsed GitHub URL: Owner=${owner}, Repo=${repo}, Branch=${branch}`);
   
   if (!owner || !repo) {
     throw new Error(`Invalid GitHub URL: ${repoUrl}`);
   }
 
-  // Instead of using the git/trees endpoint, use the contents endpoint to get all files
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents?ref=${branch}`;
+  // First check available branches
+  const branchesUrl = `https://api.github.com/repos/${owner}/${repo}/branches`;
+  console.log(`Checking available branches: ${branchesUrl}`);
   
   const headers: Record<string, string> = {
     "Accept": "application/vnd.github.v3+json",
@@ -58,8 +69,47 @@ export async function fetchRepositoryFiles(
   if (process.env.GITHUB_TOKEN) {
     headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
   }
-
+  
   try {
+    // Check available branches first
+    const branchesResponse = await fetch(branchesUrl, { headers });
+    
+    if (!branchesResponse.ok) {
+      const error: GitHubApiError = await branchesResponse.json() as GitHubApiError;
+      throw new Error(`GitHub API Error: ${error.message}`);
+    }
+    
+    const branches = await branchesResponse.json() as {name: string}[];
+    const branchNames = branches.map(b => b.name);
+    console.log(`Available branches: ${branchNames.join(', ')}`);
+    
+    // Check if specified branch exists
+    if (!branchNames.includes(branch)) {
+      console.log(`Branch '${branch}' not found.`);
+      
+      // Try some common branch names
+      if (branch !== 'master' && branchNames.includes('master')) {
+        console.log(`Using 'master' branch instead.`);
+        branch = 'master';
+      } else if (branch !== 'main' && branchNames.includes('main')) {
+        console.log(`Using 'main' branch instead.`);
+        branch = 'main';
+      } else if (branch !== 'v2.x' && branchNames.includes('v2.x')) {
+        console.log(`Using 'v2.x' branch instead.`);
+        branch = 'v2.x';
+      } else if (branchNames.length > 0) {
+        // Use first available branch
+        console.log(`Using first available branch: ${branchNames[0]}`);
+        branch = branchNames[0];
+      } else {
+        throw new Error(`No valid branches found in repository.`);
+      }
+    }
+    
+    // Now fetch repository contents
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents?ref=${branch}`;
+    console.log(`Fetching repository contents from: ${apiUrl}`);
+    
     // Fetch repository file tree
     const response = await fetch(apiUrl, { headers });
     
@@ -68,16 +118,22 @@ export async function fetchRepositoryFiles(
       throw new Error(`GitHub API Error: ${error.message}`);
     }
 
+    console.log(`GitHub API response status: ${response.status}`);
+    
     const data = await response.json() as GitHubFile[];
+    console.log(`Fetched ${data.length} items from the top-level directory`);
     
     // First, get all the files in the top-level directory
     const allFiles: GitHubFile[] = [];
     
     // Process initial directory
     for (const item of data) {
+      console.log(`Processing: ${item.name}, type: ${item.type}`);
       if (item.type === 'file' && item.name.endsWith('.md')) {
+        console.log(`Added markdown file: ${item.path}`);
         allFiles.push(item);
       } else if (item.type === 'dir') {
+        console.log(`Processing directory: ${item.path}`);
         // Fetch subdirectory contents recursively
         await processDirectory(owner, repo, branch, item.path, allFiles);
       }
@@ -135,6 +191,7 @@ async function fetchFileContent(
   path: string
 ): Promise<string> {
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  console.log(`Fetching file content from: ${apiUrl}`);
   
   const headers: Record<string, string> = {
     "Accept": "application/vnd.github.v3+json",
@@ -146,6 +203,7 @@ async function fetchFileContent(
 
   try {
     const response = await fetch(apiUrl, { headers });
+    console.log(`File content response status: ${response.status} for ${path}`);
     
     if (!response.ok) {
       const error: GitHubApiError = await response.json() as GitHubApiError;
@@ -156,9 +214,13 @@ async function fetchFileContent(
     
     // GitHub API returns content as base64 encoded
     if (data.content && data.encoding === 'base64') {
-      return Buffer.from(data.content, 'base64').toString('utf8');
+      const content = Buffer.from(data.content, 'base64').toString('utf8');
+      // Log a preview of the content
+      console.log(`Content preview for ${path}: ${content.substring(0, 100)}...`);
+      return content;
     }
     
+    console.error(`Content is not available for ${path}: `, data);
     throw new Error('File content is not available');
   } catch (error) {
     console.error(`Error fetching file content for ${path}:`, error);
@@ -175,6 +237,7 @@ async function processDirectory(
   allFiles: GitHubFile[]
 ): Promise<void> {
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+  console.log(`Processing directory at: ${apiUrl}`);
   
   const headers: Record<string, string> = {
     "Accept": "application/vnd.github.v3+json",
@@ -186,6 +249,7 @@ async function processDirectory(
 
   try {
     const response = await fetch(apiUrl, { headers });
+    console.log(`Directory response status: ${response.status} for ${path}`);
     
     if (!response.ok) {
       const error: GitHubApiError = await response.json() as GitHubApiError;
@@ -193,11 +257,14 @@ async function processDirectory(
     }
 
     const data = await response.json() as GitHubFile[];
+    console.log(`Directory ${path} contains ${data.length} items`);
     
     for (const item of data) {
       if (item.type === 'file' && item.name.endsWith('.md')) {
+        console.log(`Found markdown file in directory: ${item.path}`);
         allFiles.push(item);
       } else if (item.type === 'dir') {
+        console.log(`Found subdirectory: ${item.path}`);
         // Recursively process subdirectories
         await processDirectory(owner, repo, branch, item.path, allFiles);
       }

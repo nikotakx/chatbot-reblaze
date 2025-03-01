@@ -177,11 +177,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { url, branch } = refreshRepositorySchema.parse(req.body);
       
+      console.log(`Refreshing documentation from repository: ${url}, branch: ${branch}`);
+      
+      // Parse GitHub URL if it's in the format https://github.com/owner/repo
+      let repoUrl = url;
+      let repoBranch = branch || 'master'; // Default to master if branch not specified
+      
+      if (url.includes('github.com')) {
+        // Extract owner and repo from URL
+        const urlParts = url.replace(/\.git$/, '').split('/');
+        const owner = urlParts[urlParts.length - 2];
+        const repo = urlParts[urlParts.length - 1];
+        
+        if (!owner || !repo) {
+          return res.status(400).json({ 
+            error: "Invalid GitHub URL. Expected format: https://github.com/owner/repo" 
+          });
+        }
+        
+        console.log(`Parsed GitHub URL - Owner: ${owner}, Repo: ${repo}, Branch: ${repoBranch}`);
+        
+        // Format URL for API
+        repoUrl = `${owner}/${repo}`;
+      }
+      
       // Fetch files from GitHub
-      const repoContent = await fetchRepositoryFiles(url, branch);
+      console.log(`Fetching files from ${repoUrl} (${repoBranch})`);
+      const repoContent = await fetchRepositoryFiles(repoUrl, repoBranch);
+      console.log(`Fetched ${repoContent.files.length} files and ${repoContent.images.length} images`);
       
       // Process and store the documentation files
       for (const file of repoContent.files) {
+        console.log(`Processing file: ${file.path}`);
         // Check if file already exists by path
         const existingFile = await storage.getDocumentationFileByPath(file.path);
         
@@ -189,31 +216,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (existingFile) {
           // Update existing file
+          console.log(`Updating existing file: ${file.path} (ID: ${existingFile.id})`);
           const updatedFile = await storage.updateDocumentationFile(existingFile.id, file);
           fileId = updatedFile!.id;
         } else {
           // Create new file
+          console.log(`Creating new file: ${file.path}`);
           const newFile = await storage.createDocumentationFile(file);
           fileId = newFile.id;
         }
         
         // Process and store images
         const fileImages = repoContent.images.filter(img => img.path === file.path);
+        console.log(`Found ${fileImages.length} images for file: ${file.path}`);
+        
         for (const image of fileImages) {
           // Use the actual file ID
           image.fileId = fileId;
           await storage.createDocumentationImage(image);
+          console.log(`Stored image: ${image.url} for file ID: ${fileId}`);
         }
         
         // Get all images for this file for chunk processing
         const images = await storage.getDocumentationImagesByFileId(fileId);
         
         // Process file for vector storage
+        console.log(`Processing ${file.path} for vector storage`);
         const chunks = await processMarkdownForVectorStorage(
           { ...file, id: fileId }, 
           fileId, 
           images
         );
+        
+        console.log(`Generated ${chunks.length} chunks for file: ${file.path}`);
         
         // Store chunks
         for (const chunk of chunks) {
@@ -224,6 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update repository config with last synced time
       const config = await storage.getRepositoryConfig();
       if (config) {
+        console.log(`Updating repository config with last synced time`);
         await storage.updateRepositoryConfig(config.id, {
           url: config.url,
           branch: config.branch,
@@ -242,7 +278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: validationError.message });
       } else {
         console.error("Error refreshing documentation:", error);
-        res.status(500).json({ error: "Failed to refresh documentation" });
+        res.status(500).json({ 
+          error: "Failed to refresh documentation",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   });

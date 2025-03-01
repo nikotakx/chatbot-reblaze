@@ -104,7 +104,7 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
 
   // Update messages when chat history data changes
   useEffect(() => {
-    if (chatHistoryData?.messages) {
+    if (chatHistoryData && 'messages' in chatHistoryData && Array.isArray(chatHistoryData.messages)) {
       console.log("Received chat history:", chatHistoryData.messages);
       setMessages(chatHistoryData.messages);
     }

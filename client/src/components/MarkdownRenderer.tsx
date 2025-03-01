@@ -9,7 +9,7 @@ interface MarkdownRendererProps {
 /**
  * Proxy or placeholder image URL to use when relative GitBook paths can't be resolved
  */
-const PLACEHOLDER_IMAGE_URL = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+const PLACEHOLDER_IMAGE_URL = ""; // Removed placeholder image to avoid showing it unnecessarily
 
 export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const [html, setHtml] = useState<string>("");
@@ -25,10 +25,10 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         // First preprocess the markdown to handle relative image paths
         let processedContent = content;
         
-        // Replace any image markdown syntax with relative URLs to use our placeholder
+        // Remove image markdown tags with relative URLs instead of replacing them with placeholders
         processedContent = processedContent.replace(
           /!\[(.*?)\]\((?!http[s]?:\/\/)([^)]*)\)/g,
-          `![Document Image](${PLACEHOLDER_IMAGE_URL})`
+          "$1" // Just keep the alt text without the image
         );
         
         // Configure marked with options
@@ -47,10 +47,10 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           return;
         }
         
-        // Process the HTML to handle image tags and styles
+        // Process the HTML to remove image tags with relative paths
         let processedHtml = rawHtml.replace(
           /<img[^>]*src=["'](?!http[s]?:\/\/)([^"']*)["'][^>]*>/gi,
-          `<img src="${PLACEHOLDER_IMAGE_URL}" alt="Documentation Image" class="rounded-md max-w-full my-4" />`
+          "" // Remove the image tag completely
         );
         
         // Make sure Google Drive images render correctly

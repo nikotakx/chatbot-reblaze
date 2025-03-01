@@ -9,6 +9,8 @@ import {
   RepositoryData,
   DocumentationData,
 } from "@/lib/interfaces";
+import useWebSocket from "@/hooks/use-websocket";
+import RealtimeStatus from "./RealtimeStatus";
 import {
   Table,
   TableBody,
@@ -310,9 +312,12 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
       className={`w-1/2 bg-white border-l border-gray-200 h-full overflow-y-auto ${className}`}
     >
       <div className="p-6">
-        <h2 className="text-lg font-semibold text-secondary-900 mb-4">
-          Admin Controls
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-secondary-900">
+            Admin Controls
+          </h2>
+          <RealtimeStatus />
+        </div>
 
         {/* Admin Tabs */}
         <Tabs

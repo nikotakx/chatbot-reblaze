@@ -10,6 +10,33 @@ export async function processMarkdownForVectorStorage(
   const content = file.content;
   const chunks: InsertDocumentationChunk[] = [];
   
+  // Special case: if content is very short, just store it as a single chunk
+  if (content.trim().length < 500) {
+    const metadata: Record<string, any> = {
+      path: file.path,
+      section: "full content",
+      hasImage: images && images.length > 0,
+    };
+    
+    // Add first image if available
+    if (metadata.hasImage && images && images.length > 0) {
+      const primaryImage = images[0];
+      metadata.imageUrl = primaryImage.url;
+      metadata.imageAlt = primaryImage.alt;
+    }
+    
+    const embeddingStr = await generateEmbeddingString(content);
+    
+    chunks.push({
+      fileId,
+      content,
+      metadata,
+      embedding: embeddingStr,
+    });
+    
+    return chunks;
+  }
+  
   // Split content by headers and paragraphs
   const sections = splitIntoSections(content);
   
@@ -51,6 +78,31 @@ export async function processMarkdownForVectorStorage(
     });
   }
   
+  // If no chunks were created (which shouldn't happen, but just in case),
+  // create a single chunk with the entire content
+  if (chunks.length === 0) {
+    const metadata: Record<string, any> = {
+      path: file.path,
+      section: "full content (fallback)",
+      hasImage: images && images.length > 0,
+    };
+    
+    if (metadata.hasImage && images && images.length > 0) {
+      const primaryImage = images[0];
+      metadata.imageUrl = primaryImage.url;
+      metadata.imageAlt = primaryImage.alt;
+    }
+    
+    const embeddingStr = await generateEmbeddingString(content);
+    
+    chunks.push({
+      fileId,
+      content,
+      metadata,
+      embedding: embeddingStr,
+    });
+  }
+  
   return chunks;
 }
 
@@ -62,21 +114,88 @@ interface Section {
 
 // Split Markdown content into logical sections based on headings
 function splitIntoSections(content: string): Section[] {
-  // Special case: if the entire content is very short, just return it as one section
-  if (content.length < 1000) {
-    return [{
-      content: content
-    }];
-  }
-
   const lines = content.split('\n');
   const sections: Section[] = [];
   
   let currentSection: Section | null = null;
+  let inCodeBlock = false;
+  let inTable = false;
+  let inHintBlock = false;
+  let hintBlockContent = '';
   
-  // Enhanced logic to ensure section content includes both heading and content
+  // Enhanced logic to handle GitBook-specific formatting
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    
+    // Handle code blocks
+    if (line.trim().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      if (currentSection) {
+        currentSection.content += line + '\n';
+      } else {
+        currentSection = {
+          content: line + '\n',
+        };
+      }
+      continue;
+    }
+    
+    // Handle GitBook hint blocks
+    if (line.includes('{% hint')) {
+      inHintBlock = true;
+      hintBlockContent = line + '\n';
+      continue;
+    }
+    
+    if (inHintBlock) {
+      hintBlockContent += line + '\n';
+      if (line.includes('{% endhint %}')) {
+        inHintBlock = false;
+        if (currentSection) {
+          currentSection.content += hintBlockContent;
+        } else {
+          currentSection = {
+            content: hintBlockContent,
+          };
+        }
+      }
+      continue;
+    }
+    
+    // Handle tables
+    if (line.includes('|') && (line.trim().startsWith('|') || line.trim().endsWith('|'))) {
+      if (!inTable && line.includes('---')) {
+        inTable = true;
+      }
+      
+      if (currentSection) {
+        currentSection.content += line + '\n';
+      } else {
+        currentSection = {
+          content: line + '\n',
+        };
+      }
+      continue;
+    }
+    
+    // Reset table state if we're no longer in a table
+    if (inTable && !line.includes('|')) {
+      inTable = false;
+    }
+    
+    // Don't split sections in the middle of code blocks, tables, or hint blocks
+    if (inCodeBlock || inTable) {
+      if (currentSection) {
+        currentSection.content += line + '\n';
+      } else {
+        currentSection = {
+          content: line + '\n',
+        };
+      }
+      continue;
+    }
+    
+    // Normal heading detection
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     
     if (headingMatch) {
@@ -108,25 +227,43 @@ function splitIntoSections(content: string): Section[] {
   }
   
   // If no meaningful sections were created, use the entire content
-  if (sections.length === 0 || (sections.length === 1 && sections[0].content.trim().length < 100)) {
+  if (sections.length === 0) {
     return [{
       content: content
     }];
   }
   
-  // If sections are too large, split them by paragraphs
-  // Or if they are too small, merge with adjacent sections
-  const finalSections: Section[] = [];
-  const MIN_SECTION_SIZE = 150; // Minimum characters for a section to be considered meaningful
-  const MAX_SECTION_SIZE = 1500; // Maximum characters for a section before splitting
+  // Process sections based on size
+  const processedSections: Section[] = [];
+  const MIN_SECTION_SIZE = 150; // Minimum characters for a section
+  const MAX_SECTION_SIZE = 2000; // Maximum characters before splitting
   
-  // First pass: split large sections
+  // First pass: process sections based on size
   for (const section of sections) {
+    // Combine very small sections with headings
+    if (section.content.length < MIN_SECTION_SIZE && section.heading) {
+      // Look ahead to potentially combine with the next section
+      const nextSectionIndex = sections.indexOf(section) + 1;
+      if (nextSectionIndex < sections.length) {
+        const nextSection = sections[nextSectionIndex];
+        // Only combine if the next section doesn't have its own heading
+        if (!nextSection.heading || nextSection.level > section.level) {
+          // Just mark this section - we'll process it in the next loop
+          processedSections.push({
+            ...section,
+            _shouldCombine: true
+          } as any);
+          continue;
+        }
+      }
+    }
+    
+    // Split very large sections
     if (section.content.length > MAX_SECTION_SIZE) {
       const paragraphs = splitByParagraphs(section.content);
       for (const paragraph of paragraphs) {
         if (paragraph.length > 0) {
-          finalSections.push({
+          processedSections.push({
             heading: section.heading,
             level: section.level,
             content: paragraph,
@@ -134,90 +271,118 @@ function splitIntoSections(content: string): Section[] {
         }
       }
     } else {
+      // Add medium-sized sections as-is
+      processedSections.push(section);
+    }
+  }
+  
+  // Second pass: combine marked sections
+  const finalSections: Section[] = [];
+  let currentCombinedSection: Section | null = null;
+  
+  for (const section of processedSections) {
+    if ((section as any)._shouldCombine) {
+      if (currentCombinedSection) {
+        currentCombinedSection.content += '\n' + section.content;
+      } else {
+        currentCombinedSection = { ...section };
+        delete (currentCombinedSection as any)._shouldCombine;
+      }
+    } else {
+      if (currentCombinedSection) {
+        finalSections.push(currentCombinedSection);
+        currentCombinedSection = null;
+      }
       finalSections.push(section);
     }
   }
   
-  // Second pass: merge small sections with related content
-  const mergedSections: Section[] = [];
-  let currentMergedSection: Section | null = null;
-  
-  for (const section of finalSections) {
-    // If this is a heading section and it's small
-    if (section.heading && section.content.length < MIN_SECTION_SIZE) {
-      // If we already have a section to merge with
-      if (currentMergedSection && currentMergedSection.heading === section.heading) {
-        // Merge with the existing section if it has the same heading
-        currentMergedSection.content += '\n\n' + section.content;
-      } else {
-        // Start a new merged section
-        if (currentMergedSection) {
-          mergedSections.push(currentMergedSection);
-        }
-        currentMergedSection = { ...section };
-      }
-    } else {
-      // For larger sections or different headings, add as-is
-      if (currentMergedSection) {
-        mergedSections.push(currentMergedSection);
-        currentMergedSection = null;
-      }
-      mergedSections.push(section);
-    }
+  // Add the last combined section if any
+  if (currentCombinedSection) {
+    finalSections.push(currentCombinedSection);
   }
   
-  // Add the last merged section
-  if (currentMergedSection) {
-    mergedSections.push(currentMergedSection);
-  }
-  
-  return mergedSections;
+  return finalSections;
 }
 
 // Split content by paragraphs for large sections
 function splitByParagraphs(content: string): string[] {
-  // Split by double newlines to get paragraphs, with a minimum paragraph size
-  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  // First, try to detect logical content blocks (like tables, code blocks, hint blocks)
+  const specialBlocks: string[] = [];
+  let remainingContent = content;
   
-  // Combine paragraphs that are too small to create meaningful chunks
+  // Extract GitBook hint blocks
+  const hintBlockRegex = /{%\s*hint.*?%}[\s\S]*?{%\s*endhint\s*%}/g;
+  remainingContent = remainingContent.replace(hintBlockRegex, (match) => {
+    specialBlocks.push(match);
+    return `__SPECIAL_BLOCK_${specialBlocks.length - 1}__`;
+  });
+  
+  // Extract code blocks
+  const codeBlockRegex = /```[\s\S]*?```/g;
+  remainingContent = remainingContent.replace(codeBlockRegex, (match) => {
+    specialBlocks.push(match);
+    return `__SPECIAL_BLOCK_${specialBlocks.length - 1}__`;
+  });
+  
+  // Extract tables (simple heuristic: consecutive lines with pipe symbols)
+  const tableRegex = /(\|.*\|[\r\n]+){2,}/g;
+  remainingContent = remainingContent.replace(tableRegex, (match) => {
+    specialBlocks.push(match);
+    return `__SPECIAL_BLOCK_${specialBlocks.length - 1}__`;
+  });
+  
+  // Split by double newlines to get logical paragraphs
+  const paragraphs = remainingContent.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  
+  // Combine paragraphs to create meaningful chunks
   const result: string[] = [];
   let currentChunk = "";
   const MIN_CHUNK_SIZE = 100; // Minimum characters for a standalone chunk
-  const MAX_CHUNK_SIZE = 1500; // Maximum characters for a chunk to prevent too large chunks
+  const MAX_CHUNK_SIZE = 2000; // Maximum characters for a chunk
   
   for (const paragraph of paragraphs) {
     const trimmedParagraph = paragraph.trim();
     
+    // If paragraph contains a special block reference, restore it
+    let processedParagraph = trimmedParagraph.replace(/__SPECIAL_BLOCK_(\d+)__/g, (_, index) => {
+      return specialBlocks[parseInt(index, 10)];
+    });
+    
+    // Special case: if a restored paragraph is now very large, add it as a standalone chunk
+    if (processedParagraph.length > MAX_CHUNK_SIZE) {
+      // If we have a current chunk, add it first
+      if (currentChunk) {
+        result.push(currentChunk);
+        currentChunk = "";
+      }
+      // Add the large paragraph as its own chunk
+      result.push(processedParagraph);
+      continue;
+    }
+    
     // If adding this paragraph would make the chunk too large, start a new chunk
-    if (currentChunk && (currentChunk.length + trimmedParagraph.length > MAX_CHUNK_SIZE)) {
+    if (currentChunk && (currentChunk.length + processedParagraph.length > MAX_CHUNK_SIZE)) {
       result.push(currentChunk);
-      currentChunk = trimmedParagraph;
+      currentChunk = processedParagraph;
     } else {
       // Add a space between paragraphs in the same chunk
       if (currentChunk) {
-        currentChunk += "\n\n" + trimmedParagraph;
+        currentChunk += "\n\n" + processedParagraph;
       } else {
-        currentChunk = trimmedParagraph;
+        currentChunk = processedParagraph;
       }
     }
   }
   
-  // Add the last chunk if it exists and has meaningful content
-  if (currentChunk && currentChunk.length >= MIN_CHUNK_SIZE) {
+  // Add the last chunk if it exists
+  if (currentChunk) {
     result.push(currentChunk);
-  } else if (currentChunk) {
-    // If the last chunk is too small, try to merge it with the previous chunk or just keep it
-    if (result.length > 0) {
-      const lastIndex = result.length - 1;
-      const lastChunk = result[lastIndex];
-      if (lastChunk.length + currentChunk.length <= MAX_CHUNK_SIZE) {
-        result[lastIndex] = lastChunk + "\n\n" + currentChunk;
-      } else {
-        result.push(currentChunk);
-      }
-    } else {
-      result.push(currentChunk);
-    }
+  }
+  
+  // If we have no results but had content, return the original content
+  if (result.length === 0 && content.trim().length > 0) {
+    return [content];
   }
   
   return result;

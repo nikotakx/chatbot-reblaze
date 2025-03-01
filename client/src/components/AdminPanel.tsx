@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import { formatDistanceToNow } from "date-fns";
+import { FileText, Image, FileCode, File, RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface AdminPanelProps {
@@ -131,10 +136,92 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
     lastSynced: null
   };
 
+  // Prepare data for visualizations
+  const contentDistribution = useMemo(() => {
+    if (!stats) return [];
+    
+    return [
+      { name: 'Files', value: stats.fileCount, color: '#4f46e5' },
+      { name: 'Chunks', value: stats.chunkCount, color: '#10b981' },
+      { name: 'Images', value: stats.imageCount, color: '#f59e0b' }
+    ];
+  }, [stats]);
+
+  // Calculate coverage ratio for progress bar
+  const contentCoverage = useMemo(() => {
+    if (!stats || stats.fileCount === 0) return 0;
+    return Math.min(100, Math.round((stats.chunkCount / (stats.fileCount * 3)) * 100));
+  }, [stats]);
+
+  // Calculate file extension distribution
+  const fileExtensions = useMemo(() => {
+    if (!docsData?.files) return [];
+    
+    const extensions: Record<string, number> = {};
+    
+    docsData.files.forEach((file: DocumentationFile) => {
+      const ext = file.path.split('.').pop() || 'unknown';
+      extensions[ext] = (extensions[ext] || 0) + 1;
+    });
+    
+    return Object.entries(extensions).map(([name, value]) => ({
+      name,
+      value,
+      color: name === 'md' ? '#4f46e5' : 
+             name === 'txt' ? '#10b981' : 
+             name === 'json' ? '#f59e0b' : 
+             name === 'html' ? '#ef4444' : '#6b7280'
+    }));
+  }, [docsData]);
+
+  // Get repository status
+  const repoStatus = useMemo(() => {
+    if (isLoadingRepo) return 'loading';
+    if (!repoData?.config) return 'not-configured';
+    return 'configured';
+  }, [isLoadingRepo, repoData]);
+
   return (
     <aside className={`w-96 bg-white border-l border-gray-200 h-full overflow-y-auto ${className}`}>
       <div className="p-6">
         <h2 className="text-lg font-semibold text-secondary-900 mb-4">Admin Controls</h2>
+        
+        {/* Repository Status */}
+        <Card className="mb-8">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-secondary-700 uppercase tracking-wider">
+              Repository Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              {repoStatus === 'configured' ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Connected to GitHub</p>
+                    <p className="text-sm text-secondary-500">
+                      {repoData?.config?.url} ({repoData?.config?.branch})
+                    </p>
+                    <p className="text-xs text-secondary-400 mt-1">
+                      Last synced: {formatTime(stats.lastSynced)}
+                    </p>
+                  </div>
+                </>
+              ) : repoStatus === 'loading' ? (
+                <>
+                  <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+                  <p className="font-medium">Checking repository status...</p>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-orange-500" />
+                  <p className="font-medium">Not connected to a repository</p>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
         
         {/* Repository Settings */}
         <div className="mb-8">
@@ -180,18 +267,16 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
                 className="flex-1"
                 onClick={handleConnectRepository}
                 disabled={!repoUrl || configMutation.isPending}
-                isLoading={configMutation.isPending}
               >
-                Connect Repository
+                {configMutation.isPending ? "Connecting..." : "Connect Repository"}
               </Button>
               <Button 
                 className="flex-1" 
                 variant="outline"
                 onClick={handleRefreshRepository}
                 disabled={!repoUrl || refreshMutation.isPending}
-                isLoading={refreshMutation.isPending}
               >
-                Refresh
+                {refreshMutation.isPending ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
           </div>
@@ -201,41 +286,152 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
         <div className="mb-8">
           <h3 className="text-sm font-medium text-secondary-700 uppercase tracking-wider mb-3">Documentation Content</h3>
           
-          {/* Content Statistics */}
+          {/* Enhanced Statistics Cards */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-xs text-secondary-500 mb-1">Files Indexed</p>
-              {isLoadingStats ? (
-                <Skeleton className="h-6 w-12" />
-              ) : (
-                <p className="text-lg font-semibold text-secondary-900">{stats.fileCount}</p>
-              )}
-            </div>
-            <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-xs text-secondary-500 mb-1">Last Updated</p>
-              {isLoadingStats ? (
-                <Skeleton className="h-6 w-24" />
-              ) : (
-                <p className="text-lg font-semibold text-secondary-900">{formatTime(stats.lastSynced)}</p>
-              )}
-            </div>
-            <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-xs text-secondary-500 mb-1">Text Chunks</p>
-              {isLoadingStats ? (
-                <Skeleton className="h-6 w-12" />
-              ) : (
-                <p className="text-lg font-semibold text-secondary-900">{stats.chunkCount}</p>
-              )}
-            </div>
-            <div className="bg-gray-50 p-3 rounded-md">
-              <p className="text-xs text-secondary-500 mb-1">Image References</p>
-              {isLoadingStats ? (
-                <Skeleton className="h-6 w-12" />
-              ) : (
-                <p className="text-lg font-semibold text-secondary-900">{stats.imageCount}</p>
-              )}
-            </div>
+            <Card className="bg-white shadow-sm border border-gray-100">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="text-xs text-secondary-500">Files Indexed</p>
+                    {isLoadingStats ? (
+                      <Skeleton className="h-6 w-12" />
+                    ) : (
+                      <p className="text-lg font-semibold text-secondary-900">{stats.fileCount}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white shadow-sm border border-gray-100">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <FileCode className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-xs text-secondary-500">Text Chunks</p>
+                    {isLoadingStats ? (
+                      <Skeleton className="h-6 w-12" />
+                    ) : (
+                      <p className="text-lg font-semibold text-secondary-900">{stats.chunkCount}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white shadow-sm border border-gray-100">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <Image className="h-5 w-5 text-amber-500" />
+                  <div>
+                    <p className="text-xs text-secondary-500">Image References</p>
+                    {isLoadingStats ? (
+                      <Skeleton className="h-6 w-12" />
+                    ) : (
+                      <p className="text-lg font-semibold text-secondary-900">{stats.imageCount}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white shadow-sm border border-gray-100">
+              <CardContent className="p-3">
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="text-xs text-secondary-500">Last Updated</p>
+                    {isLoadingStats ? (
+                      <Skeleton className="h-6 w-24" />
+                    ) : (
+                      <p className="text-base font-semibold text-secondary-900">{formatTime(stats.lastSynced)}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+          
+          {/* Content Coverage */}
+          <Card className="mb-4 bg-white shadow-sm border border-gray-100">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium">Content Coverage</h4>
+                <Badge variant={contentCoverage > 70 ? "secondary" : contentCoverage > 30 ? "outline" : "destructive"}>
+                  {contentCoverage}%
+                </Badge>
+              </div>
+              <Progress value={contentCoverage} className="h-2" />
+              <p className={`text-xs mt-2 ${
+                contentCoverage > 70 ? "text-green-600" : 
+                contentCoverage > 30 ? "text-amber-600" : 
+                "text-red-600"
+              }`}>
+                {contentCoverage > 70 ? "Good coverage" : contentCoverage > 30 ? "Moderate coverage" : "Low coverage"}
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Content Distribution */}
+          {!isLoadingStats && stats.fileCount + stats.chunkCount + stats.imageCount > 0 && (
+            <Card className="mb-4 bg-white shadow-sm border border-gray-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Content Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                <div className="h-[150px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={contentDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={60}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {contentDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* File Extensions (when files exist) */}
+          {!isLoadingDocs && fileExtensions.length > 0 && (
+            <Card className="mb-4 bg-white shadow-sm border border-gray-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">File Types</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                <div className="h-[150px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={fileExtensions}
+                      margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                    >
+                      <XAxis dataKey="name" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {fileExtensions.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           {/* Content Search */}
           <div className="mb-4">

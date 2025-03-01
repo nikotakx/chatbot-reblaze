@@ -1,5 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   moduleNameMapper: {
@@ -12,11 +12,9 @@ export default {
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
-        useESM: true,
       },
     ],
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   testMatch: [
     '**/__tests__/unit/client/**/*.test.[jt]s?(x)',
     '**/__tests__/e2e/**/*.test.[jt]s?(x)',

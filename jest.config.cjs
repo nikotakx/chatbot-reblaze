@@ -1,5 +1,5 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleNameMapper: {
@@ -11,14 +11,13 @@ export default {
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
-        useESM: true,
       },
     ],
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   testMatch: [
     '**/__tests__/unit/**/*.test.[jt]s?(x)',
     '**/__tests__/integration/**/*.test.[jt]s?(x)',
+    '!**/__tests__/unit/client/**/*.test.[jt]s?(x)', // Exclude client tests
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };

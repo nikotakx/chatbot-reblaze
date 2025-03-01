@@ -62,6 +62,13 @@ interface Section {
 
 // Split Markdown content into logical sections based on headings
 function splitIntoSections(content: string): Section[] {
+  // Special case: if the entire content is very short, just return it as one section
+  if (content.length < 1000) {
+    return [{
+      content: content
+    }];
+  }
+
   const lines = content.split('\n');
   const sections: Section[] = [];
   
@@ -98,6 +105,13 @@ function splitIntoSections(content: string): Section[] {
   // Add the last section
   if (currentSection && currentSection.content.trim().length > 0) {
     sections.push(currentSection);
+  }
+  
+  // If no meaningful sections were created, use the entire content
+  if (sections.length === 0 || (sections.length === 1 && sections[0].content.trim().length < 100)) {
+    return [{
+      content: content
+    }];
   }
   
   // If sections are too large, split them by paragraphs

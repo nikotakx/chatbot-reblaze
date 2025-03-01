@@ -69,6 +69,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content: aiResponse
       });
       
+      // Broadcast chat update via WebSocket
+      broadcastMessage('chat', {
+        sessionId: chatSessionId,
+        messageCount: chatHistory.length + 2 // +2 for the new user message and AI response
+      });
+      
       // Return response
       res.json({
         message: aiResponse,
@@ -268,6 +274,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Broadcast repository update via WebSocket
+      broadcastMessage('repository', {
+        lastUpdated: new Date().toISOString(),
+        fileCount: repoContent.files.length,
+        imageCount: repoContent.images.length
+      });
+      
       res.json({ 
         success: true, 
         filesProcessed: repoContent.files.length,
@@ -419,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           count: count as number 
         }));
       
-      res.json({
+      const analyticsData = {
         summary: {
           totalSessions: new Set(allMessages.map(m => m.sessionId)).size,
           totalQueries,
@@ -432,7 +445,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         timeSeries: Array.from(messagesByDay.values()).sort((a, b) => a.date.localeCompare(b.date)),
         topQueryTerms
+      };
+      
+      // Broadcast analytics update via WebSocket
+      broadcastMessage('analytics', {
+        timestamp: new Date().toISOString(),
+        summary: analyticsData.summary
       });
+      
+      res.json(analyticsData);
     } catch (error) {
       console.error("Error generating analytics:", error);
       res.status(500).json({ error: "Failed to generate analytics" });

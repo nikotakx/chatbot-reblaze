@@ -9,7 +9,7 @@ import {
   InsertRepositoryConfig,
   ChatMessage,
   InsertChatMessage,
-} from "@shared/schema";
+} from "./db/schema";
 
 export interface IStorage {
   // Documentation Files
@@ -447,4 +447,198 @@ Always use HTTPS and rotate your credentials regularly.
   }
 }
 
-export const storage = new MemStorage();
+// Database Storage implementation
+import { db } from "./db";
+import { 
+  documentationFiles, 
+  documentationImages, 
+  documentationChunks, 
+  repositoryConfig, 
+  chatMessages 
+} from "./db/schema";
+import { 
+  eq, 
+  and, 
+  desc 
+} from "drizzle-orm";
+
+export class DatabaseStorage implements IStorage {
+  // Documentation Files
+  async getDocumentationFile(id: number): Promise<DocumentationFile | undefined> {
+    const [file] = await db.select().from(documentationFiles).where(eq(documentationFiles.id, id));
+    return file;
+  }
+
+  async getDocumentationFileByPath(path: string): Promise<DocumentationFile | undefined> {
+    const [file] = await db.select().from(documentationFiles).where(eq(documentationFiles.path, path));
+    return file;
+  }
+
+  async getAllDocumentationFiles(): Promise<DocumentationFile[]> {
+    return await db.select().from(documentationFiles);
+  }
+
+  async createDocumentationFile(file: InsertDocumentationFile): Promise<DocumentationFile> {
+    const [createdFile] = await db.insert(documentationFiles).values(file).returning();
+    return createdFile;
+  }
+
+  async updateDocumentationFile(id: number, file: Partial<InsertDocumentationFile>): Promise<DocumentationFile | undefined> {
+    const [updatedFile] = await db
+      .update(documentationFiles)
+      .set({
+        ...file,
+        lastUpdated: new Date()
+      })
+      .where(eq(documentationFiles.id, id))
+      .returning();
+    return updatedFile;
+  }
+
+  async deleteDocumentationFile(id: number): Promise<boolean> {
+    const [deletedFile] = await db
+      .delete(documentationFiles)
+      .where(eq(documentationFiles.id, id))
+      .returning();
+    return !!deletedFile;
+  }
+
+  // Documentation Images
+  async getDocumentationImage(id: number): Promise<DocumentationImage | undefined> {
+    const [image] = await db.select().from(documentationImages).where(eq(documentationImages.id, id));
+    return image;
+  }
+
+  async getDocumentationImagesByFileId(fileId: number): Promise<DocumentationImage[]> {
+    return await db
+      .select()
+      .from(documentationImages)
+      .where(eq(documentationImages.fileId, fileId));
+  }
+
+  async createDocumentationImage(image: InsertDocumentationImage): Promise<DocumentationImage> {
+    const [createdImage] = await db.insert(documentationImages).values(image).returning();
+    return createdImage;
+  }
+
+  async updateDocumentationImage(id: number, image: Partial<InsertDocumentationImage>): Promise<DocumentationImage | undefined> {
+    const [updatedImage] = await db
+      .update(documentationImages)
+      .set({
+        ...image,
+        lastUpdated: new Date()
+      })
+      .where(eq(documentationImages.id, id))
+      .returning();
+    return updatedImage;
+  }
+
+  async deleteDocumentationImage(id: number): Promise<boolean> {
+    const [deletedImage] = await db
+      .delete(documentationImages)
+      .where(eq(documentationImages.id, id))
+      .returning();
+    return !!deletedImage;
+  }
+
+  // Documentation Chunks
+  async getDocumentationChunk(id: number): Promise<DocumentationChunk | undefined> {
+    const [chunk] = await db.select().from(documentationChunks).where(eq(documentationChunks.id, id));
+    return chunk;
+  }
+
+  async getDocumentationChunksByFileId(fileId: number): Promise<DocumentationChunk[]> {
+    return await db
+      .select()
+      .from(documentationChunks)
+      .where(eq(documentationChunks.fileId, fileId));
+  }
+
+  async getAllDocumentationChunks(): Promise<DocumentationChunk[]> {
+    return await db.select().from(documentationChunks);
+  }
+
+  async createDocumentationChunk(chunk: InsertDocumentationChunk): Promise<DocumentationChunk> {
+    const [createdChunk] = await db.insert(documentationChunks).values(chunk).returning();
+    return createdChunk;
+  }
+
+  async updateDocumentationChunk(id: number, chunk: Partial<InsertDocumentationChunk>): Promise<DocumentationChunk | undefined> {
+    const [updatedChunk] = await db
+      .update(documentationChunks)
+      .set({
+        ...chunk,
+        lastUpdated: new Date()
+      })
+      .where(eq(documentationChunks.id, id))
+      .returning();
+    return updatedChunk;
+  }
+
+  async deleteDocumentationChunk(id: number): Promise<boolean> {
+    const [deletedChunk] = await db
+      .delete(documentationChunks)
+      .where(eq(documentationChunks.id, id))
+      .returning();
+    return !!deletedChunk;
+  }
+
+  // Repository Config
+  async getRepositoryConfig(): Promise<RepositoryConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(repositoryConfig)
+      .where(eq(repositoryConfig.isActive, true))
+      .limit(1);
+    return config;
+  }
+
+  async createRepositoryConfig(config: InsertRepositoryConfig): Promise<RepositoryConfig> {
+    const [createdConfig] = await db.insert(repositoryConfig).values(config).returning();
+    return createdConfig;
+  }
+
+  async updateRepositoryConfig(id: number, config: Partial<InsertRepositoryConfig>): Promise<RepositoryConfig | undefined> {
+    const [updatedConfig] = await db
+      .update(repositoryConfig)
+      .set(config)
+      .where(eq(repositoryConfig.id, id))
+      .returning();
+    return updatedConfig;
+  }
+
+  // Chat Messages
+  async getChatMessagesBySessionId(sessionId: string): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId))
+      .orderBy(chatMessages.timestamp);
+  }
+
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [createdMessage] = await db.insert(chatMessages).values(message).returning();
+    return createdMessage;
+  }
+}
+
+// Switch to the DatabaseStorage implementation
+export const storage = new DatabaseStorage();
+
+// Seed the database if needed (uncomment to initialize data)
+// async function seedDatabase() {
+//   // Check if we already have data
+//   const existingConfig = await storage.getRepositoryConfig();
+//   if (existingConfig) return;
+//
+//   // Add repository config
+//   const config = await storage.createRepositoryConfig({
+//     url: "https://github.com/acme/product-docs",
+//     branch: "main",
+//     isActive: true
+//   });
+//
+//   // Add your seed data here similar to the MemStorage seedData method
+// }
+//
+// seedDatabase().catch(console.error);

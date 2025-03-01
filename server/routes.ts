@@ -10,8 +10,11 @@ import { chatWithDocumentation } from "./lib/openai";
 import {
   askQuestionSchema,
   refreshRepositorySchema,
-  insertRepositoryConfigSchema,
 } from "@shared/schema";
+import { 
+  insertRepositoryConfigSchema, 
+  repositoryConfig 
+} from "./db/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -222,8 +225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const config = await storage.getRepositoryConfig();
       if (config) {
         await storage.updateRepositoryConfig(config.id, {
-          ...config,
-          lastSynced: new Date()
+          url: config.url,
+          branch: config.branch,
+          isActive: config.isActive
         });
       }
       

@@ -78,6 +78,7 @@ function splitIntoSections(content: string): Section[] {
         sections.push(currentSection);
       }
       
+      // Create a new section that includes the heading
       currentSection = {
         heading: headingMatch[2],
         level: headingMatch[1].length,

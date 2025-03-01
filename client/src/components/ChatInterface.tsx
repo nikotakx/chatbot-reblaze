@@ -58,19 +58,39 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
+      console.log("Sending message to API:", message, "with sessionId:", sessionId);
       const response = await apiRequest("POST", "/api/chat", { 
         message, 
         sessionId 
       });
-      return response.json() as Promise<ChatResponse>;
+      const data = await response.json() as ChatResponse;
+      console.log("API response:", data);
+      return data;
     },
     onSuccess: (data) => {
+      console.log("Mutation success, received data:", data);
+      
       // If we don't have a session ID yet, set it
       if (!sessionId) {
+        console.log("Setting session ID:", data.sessionId);
         setSessionId(data.sessionId);
       }
+      
       // Invalidate the chat history query to refetch
+      console.log("Invalidating query for session:", data.sessionId);
       queryClient.invalidateQueries({ queryKey: [`/api/chat/${data.sessionId}`] });
+      
+      // Manually add AI response for immediate feedback in case the query refetch is slow
+      const aiMessage: ChatMessageType = {
+        id: Date.now(), // Temporary ID
+        sessionId: data.sessionId,
+        role: "assistant",
+        content: data.message,
+        timestamp: new Date().toISOString(),
+      };
+      
+      console.log("Adding AI response to messages:", aiMessage);
+      setMessages(prev => [...prev, aiMessage]);
     },
     onError: (error) => {
       toast({
@@ -85,6 +105,7 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
   // Update messages when chat history data changes
   useEffect(() => {
     if (chatHistoryData?.messages) {
+      console.log("Received chat history:", chatHistoryData.messages);
       setMessages(chatHistoryData.messages);
     }
   }, [chatHistoryData]);
@@ -98,6 +119,8 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
 
   // Handle sending a message
   const handleSendMessage = (message: string) => {
+    console.log("Sending message:", message);
+    
     // Add user message to UI immediately for better UX
     const userMessage: ChatMessageType = {
       id: Date.now(), // Temporary ID
@@ -107,7 +130,12 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
       timestamp: new Date().toISOString(),
     };
     
-    setMessages((prev) => [...prev, userMessage]);
+    console.log("Adding user message to state:", userMessage);
+    setMessages((prev) => {
+      const newMessages = [...prev, userMessage];
+      console.log("Updated messages state:", newMessages);
+      return newMessages;
+    });
     
     // Send the message to the API
     sendMessageMutation.mutate(message);

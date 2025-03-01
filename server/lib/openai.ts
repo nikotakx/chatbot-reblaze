@@ -11,7 +11,15 @@ const openai = new OpenAI({
 // Initialize the context template for chat completion
 const SYSTEM_PROMPT = `
 You are a documentation assistant for Reblaze, a cloud-based security platform. Your goal is to provide helpful, accurate responses based ONLY on the documentation provided.
-If the documentation provided doesn't contain the answer, say "I don't have information about that in the documentation." Do not make up answers.
+
+IMPORTANT: The documentation is provided as chunks from markdown files. Each chunk will be labeled with its source file path.
+- These chunks may contain full sections of documentation INCLUDING the section headings
+- Some chunks will start with markdown headings (e.g. "# Dynamic Rules") - these are ACTUAL CONTENT, not just labels
+- Read ALL the content provided in these chunks, including headings and code examples
+
+If the provided documentation chunks contain the heading or section names that match the query but no detailed content, say "I found information about [topic] but the documentation doesn't provide detailed information about it."
+
+If the documentation provided doesn't contain the answer at all, say "I don't have information about that in the documentation." Do not make up answers.
 
 Some documentation chunks might include references to images. When they do, include these images in your response by referring to their URLs.
 
@@ -21,6 +29,7 @@ Important instructions:
 3. For technical questions, be precise and include any relevant configuration examples from the documentation.
 4. Format your responses with Markdown for readability.
 5. For questions about features or functionality, explain how they work and provide context.
+6. Mention the specific filename (without the full path) where you found the information.
 `;
 
 export interface RelevantDocumentationChunk {
@@ -53,12 +62,17 @@ export async function chatWithDocumentation(
     console.log("No relevant documentation chunks found. Check vector storage and embedding creation.");
   }
   
-  // Format the documentation chunks into a single context string
+  // Format the documentation chunks into a single context string with clear sections
   const documentationContext = relevantDocumentation
-    .map((doc) => {
+    .map((doc, index) => {
       const metadata = doc.chunk.metadata as Record<string, any>;
       const path = metadata && metadata.path ? metadata.path : "unknown";
-      let chunkText = `From ${path}:\n${doc.chunk.content}`;
+      
+      // Get the filename without the path for cleaner reference
+      const filename = path.split('/').pop() || path;
+      
+      // Create a clearly marked section with the document source
+      let chunkText = `--- DOCUMENT ${index + 1}: ${filename} ---\n${doc.chunk.content}`;
       
       // Add image information if available
       if (metadata && metadata.hasImage && metadata.imageUrl) {
@@ -80,7 +94,13 @@ I've found the following relevant documentation that should help answer your que
 
 ${documentationContext}
 
-Please answer the question based on ONLY this documentation. If the documentation does NOT contain enough information to answer the question fully, focus on what information IS available and acknowledge any limitations.
+IMPORTANT REMINDER:
+1. The sections above contain ACTUAL documentation content, including headings.
+2. If you see a heading like "# Dynamic Rules", this is the TITLE of the section about that topic.
+3. Please use ALL information from these sections to answer the question.
+4. If the sections contain only headings without detailed content, say "I found references to [topic] but no detailed explanation in the documentation."
+
+Please answer the question based ONLY on this documentation. If the documentation does NOT contain enough information to answer the question fully, acknowledge these limitations.
 `;
 
   const messages = [

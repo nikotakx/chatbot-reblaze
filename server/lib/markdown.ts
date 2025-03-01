@@ -233,46 +233,78 @@ function splitIntoSections(content: string): Section[] {
     }];
   }
   
-  // Process sections based on size
+  // Process sections based on size - using larger chunks
   const processedSections: Section[] = [];
-  const MIN_SECTION_SIZE = 150; // Minimum characters for a section
-  const MAX_SECTION_SIZE = 2000; // Maximum characters before splitting
+  const MIN_SECTION_SIZE = 500; // Increased minimum characters for a section
+  const MAX_SECTION_SIZE = 8000; // Increased maximum characters before splitting
   
-  // First pass: process sections based on size
-  for (const section of sections) {
-    // Combine very small sections with headings
-    if (section.content.length < MIN_SECTION_SIZE && section.heading) {
-      // Look ahead to potentially combine with the next section
-      const nextSectionIndex = sections.indexOf(section) + 1;
-      if (nextSectionIndex < sections.length) {
-        const nextSection = sections[nextSectionIndex];
-        // Only combine if the next section doesn't have its own heading
-        if (!nextSection.heading || nextSection.level > section.level) {
-          // Just mark this section - we'll process it in the next loop
+  // First pass: group sections by top-level heading to maintain context
+  let currentTopSection: Section | null = null;
+  let currentTopSectionContent = "";
+  
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    
+    // Detect top-level sections (usually # or ##)
+    const isTopLevel = section.level !== undefined && section.level <= 2;
+    
+    if (isTopLevel) {
+      // If we have a previous top section, add it to processed sections
+      if (currentTopSection && currentTopSectionContent.length > 0) {
+        // Only split if it's very large
+        if (currentTopSectionContent.length > MAX_SECTION_SIZE * 1.5) {
+          const paragraphs = splitByParagraphs(currentTopSectionContent);
+          for (const paragraph of paragraphs) {
+            if (paragraph.length > 0) {
+              processedSections.push({
+                heading: currentTopSection.heading,
+                level: currentTopSection.level,
+                content: paragraph,
+              });
+            }
+          }
+        } else {
           processedSections.push({
-            ...section,
-            _shouldCombine: true
-          } as any);
-          continue;
+            heading: currentTopSection.heading,
+            level: currentTopSection.level,
+            content: currentTopSectionContent,
+          });
         }
       }
+      
+      // Start a new top section
+      currentTopSection = section;
+      currentTopSectionContent = section.content;
+    } else {
+      // This is a sub-section, add it to the current top section if we have one
+      if (currentTopSection) {
+        currentTopSectionContent += "\n" + section.content;
+      } else {
+        // No parent section, add as standalone
+        processedSections.push(section);
+      }
     }
-    
-    // Split very large sections
-    if (section.content.length > MAX_SECTION_SIZE) {
-      const paragraphs = splitByParagraphs(section.content);
+  }
+  
+  // Add the last top section if any
+  if (currentTopSection && currentTopSectionContent.length > 0) {
+    if (currentTopSectionContent.length > MAX_SECTION_SIZE * 1.5) {
+      const paragraphs = splitByParagraphs(currentTopSectionContent);
       for (const paragraph of paragraphs) {
         if (paragraph.length > 0) {
           processedSections.push({
-            heading: section.heading,
-            level: section.level,
+            heading: currentTopSection.heading,
+            level: currentTopSection.level,
             content: paragraph,
           });
         }
       }
     } else {
-      // Add medium-sized sections as-is
-      processedSections.push(section);
+      processedSections.push({
+        heading: currentTopSection.heading,
+        level: currentTopSection.level,
+        content: currentTopSectionContent,
+      });
     }
   }
   
@@ -338,8 +370,8 @@ function splitByParagraphs(content: string): string[] {
   // Combine paragraphs to create meaningful chunks
   const result: string[] = [];
   let currentChunk = "";
-  const MIN_CHUNK_SIZE = 100; // Minimum characters for a standalone chunk
-  const MAX_CHUNK_SIZE = 2000; // Maximum characters for a chunk
+  const MIN_CHUNK_SIZE = 250; // Increased minimum characters for a standalone chunk
+  const MAX_CHUNK_SIZE = 8000; // Increased maximum characters for a chunk
   
   for (const paragraph of paragraphs) {
     const trimmedParagraph = paragraph.trim();

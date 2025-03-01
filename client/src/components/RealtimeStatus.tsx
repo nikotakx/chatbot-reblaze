@@ -1,9 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
 
 interface RealtimeStatusProps {
   className?: string;
@@ -14,11 +20,14 @@ interface RealtimeStatusProps {
  */
 export default function RealtimeStatus({ className = '' }: RealtimeStatusProps) {
   const { toast } = useToast();
+  const [lastEventTime, setLastEventTime] = useState<Date | null>(null);
+  const [messageCount, setMessageCount] = useState(0);
   const { isConnected, lastMessage, reconnect } = useWebSocket([
     'chat',
     'analytics',
     'repository',
-    'error'
+    'error',
+    'echo'
   ]);
 
   // Show toast notifications for specific events

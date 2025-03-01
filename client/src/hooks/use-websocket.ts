@@ -27,16 +27,24 @@ export function useWebSocket(types: WebSocketEventType[] = []) {
     webSocketClient.on('connection', handleConnection);
 
     // Set up the message listeners
-    const listeners: Record<WebSocketEventType, (message: WebSocketMessage) => void> = {} as any;
+    const listeners: Record<string, (message: WebSocketMessage) => void> = {};
 
     // Create and register listeners for each requested type
     types.forEach(type => {
       const listener = (message: WebSocketMessage) => {
+        // Update the latest message state
         setLastMessage(message);
       };
       
+      // Store the listener reference to be able to remove it later
       listeners[type] = listener;
-      webSocketClient.on(type, listener);
+      
+      // Register the listener with the WebSocket client
+      try {
+        webSocketClient.on(type, listener);
+      } catch (error) {
+        console.error(`Error registering listener for type '${type}':`, error);
+      }
     });
 
     // Cleanup function

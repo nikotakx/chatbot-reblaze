@@ -34,14 +34,31 @@ class WebSocketClient {
    * Connects to the WebSocket server
    */
   connect(): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
-      return;
+    // If already connected or connecting, don't try to connect again
+    if (this.socket) {
+      const state = this.socket.readyState;
+      if (state === WebSocket.OPEN) {
+        console.log('WebSocket already connected');
+        return;
+      } else if (state === WebSocket.CONNECTING) {
+        console.log('WebSocket already connecting');
+        return;
+      }
     }
 
     try {
+      // Close any existing socket before creating a new one
+      if (this.socket) {
+        try {
+          this.socket.close();
+        } catch (error) {
+          console.warn('Error closing existing WebSocket:', error);
+        }
+      }
+
       // Determine the WebSocket URL based on current location
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Use the actual hostname and port from the window.location
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
       console.log(`Connecting to WebSocket server at ${wsUrl}`);
@@ -54,6 +71,7 @@ class WebSocketClient {
       this.socket.onerror = this.handleError.bind(this);
     } catch (error) {
       console.error('Error connecting to WebSocket:', error);
+      this.connected = false;
       this.scheduleReconnect();
     }
   }
@@ -153,8 +171,23 @@ class WebSocketClient {
    * Handles WebSocket error event
    */
   private handleError(event: Event): void {
-    console.error('WebSocket error:', event);
+    console.error('WebSocket error encountered:', event);
+    
+    // Mark as disconnected
     this.connected = false;
+    
+    // Attempt to recover from the error by reconnecting
+    this.scheduleReconnect();
+    
+    // Notify listeners of the error
+    try {
+      this.notifyListeners({
+        type: 'error',
+        message: 'Connection error occurred. Attempting to reconnect...'
+      });
+    } catch (notifyError) {
+      console.error('Error notifying listeners about WebSocket error:', notifyError);
+    }
   }
 
   /**

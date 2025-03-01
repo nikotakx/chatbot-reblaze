@@ -551,6 +551,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Export the broadcast function to the global scope so it can be used in other modules
   (global as any).wsBroadcast = broadcastMessage;
+  
+  // Send a test message every 10 seconds to check WebSocket connectivity
+  setInterval(() => {
+    if (clients.size > 0) {
+      console.log(`Broadcasting test message to ${clients.size} connected clients`);
+      broadcastMessage('echo', { 
+        timestamp: new Date().toISOString(),
+        message: 'Server heartbeat'
+      });
+    }
+  }, 10000);
 
   return httpServer;
 }

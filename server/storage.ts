@@ -221,11 +221,11 @@ export class MemStorage implements IStorage {
 
   async createRepositoryConfig(config: InsertRepositoryConfig): Promise<RepositoryConfig> {
     const id = this.currentRepositoryConfigId++;
-    const timestamp = new Date();
+    // Create a properly typed RepositoryConfig object
     const repositoryConfig: RepositoryConfig = { 
       ...config, 
       id, 
-      lastSynced: timestamp,
+      lastSynced: new Date(),
       isActive: config.isActive ?? true
     };
     this.repositoryConfigs.set(id, repositoryConfig);
@@ -625,8 +625,7 @@ export class DatabaseStorage implements IStorage {
     // Ensure all required fields have values
     const configToInsert = {
       ...config,
-      isActive: config.isActive ?? true,
-      lastSynced: config.lastSynced ?? null
+      isActive: config.isActive ?? true
     };
     
     const [createdConfig] = await db.insert(repositoryConfig).values(configToInsert).returning();

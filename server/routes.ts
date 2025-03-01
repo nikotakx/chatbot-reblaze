@@ -3,7 +3,7 @@ import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { v4 as uuidv4 } from "uuid";
-import { fetchRepositoryFiles } from "./lib/github";
+import { fetchRepositoryFiles } from "./lib/github.improved";
 import { processMarkdownForVectorStorage } from "./lib/markdown";
 import { vectorStore } from "./lib/vectorStore";
 import { chatWithDocumentation } from "./lib/openai";

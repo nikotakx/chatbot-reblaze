@@ -12,7 +12,7 @@ export default function Header({ onToggleAdmin }: HeaderProps) {
     <header className="bg-white border-b border-gray-200 py-4 px-6 flex items-center justify-between">
       <div className="flex items-center space-x-3">
         <Link href="/">
-          <a className="text-primary-600 text-xl font-semibold">DocChat</a>
+          <span className="text-primary-600 text-xl font-semibold cursor-pointer">DocChat</span>
         </Link>
         <span className="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-800">Beta</span>
       </div>

@@ -96,7 +96,9 @@ export class MemStorage implements IStorage {
     const documentationFile: DocumentationFile = { 
       ...file, 
       id, 
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
+      hasImages: file.hasImages ?? false,
+      githubUrl: file.githubUrl ?? null
     };
     this.documentationFiles.set(id, documentationFile);
     return documentationFile;
@@ -137,7 +139,9 @@ export class MemStorage implements IStorage {
     const documentationImage: DocumentationImage = { 
       ...image, 
       id, 
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
+      fileId: image.fileId ?? 0,
+      alt: image.alt ?? null
     };
     this.documentationImages.set(id, documentationImage);
     return documentationImage;
@@ -182,7 +186,9 @@ export class MemStorage implements IStorage {
     const documentationChunk: DocumentationChunk = { 
       ...chunk, 
       id, 
-      lastUpdated: timestamp
+      lastUpdated: timestamp,
+      fileId: chunk.fileId ?? 0,
+      embedding: chunk.embedding ?? null
     };
     this.documentationChunks.set(id, documentationChunk);
     return documentationChunk;
@@ -219,7 +225,8 @@ export class MemStorage implements IStorage {
     const repositoryConfig: RepositoryConfig = { 
       ...config, 
       id, 
-      lastSynced: timestamp
+      lastSynced: timestamp,
+      isActive: config.isActive ?? true
     };
     this.repositoryConfigs.set(id, repositoryConfig);
     return repositoryConfig;

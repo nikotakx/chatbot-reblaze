@@ -2,17 +2,18 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { DocumentationFile, RepositoryConfig, DocumentationStats } from "@/lib/types";
+import { DocumentationFile, RepositoryConfig, DocumentationStats, ChatMessage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from "recharts";
-import { formatDistanceToNow } from "date-fns";
-import { FileText, Image, FileCode, File, RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from "recharts";
+import { format, formatDistanceToNow } from "date-fns";
+import { FileText, Image, FileCode, File, RefreshCw, CheckCircle, XCircle, MessageSquare, Database, BarChart2, Settings, Users, Clock, Trash2, Download } from "lucide-react";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface AdminPanelProps {

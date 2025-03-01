@@ -42,7 +42,9 @@ export interface IStorage {
 
   // Chat Messages
   getChatMessagesBySessionId(sessionId: string): Promise<ChatMessage[]>;
+  getAllChatMessages(): Promise<ChatMessage[]>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  deleteChatMessage(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

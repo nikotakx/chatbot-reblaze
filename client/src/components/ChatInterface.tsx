@@ -157,9 +157,11 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
 
   // Suggested questions
   const suggestedQuestions = [
-    "How do I install the product?",
-    "Show me the dashboard interface",
-    "What are the system requirements?",
+    "What are Dynamic Rules?",
+    "Show me the Dashboard interface",
+    "How do I configure security settings?",
+    "Explain traffic monitoring features",
+    "How do I analyze request logs?",
   ];
 
   return (

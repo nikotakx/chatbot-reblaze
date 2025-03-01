@@ -400,16 +400,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
            .filter(word => word.length > 3)
       );
       
-      const termFrequency = queryTerms.reduce((acc, term) => {
-        acc[term] = (acc[term] || 0) + 1;
+      const termFrequency = queryTerms.reduce<Record<string, number>>((acc, term) => {
+        if (term in acc) {
+          acc[term] += 1;
+        } else {
+          acc[term] = 1;
+        }
         return acc;
-      }, {});
+      }, {} as Record<string, number>);
       
       // Sort terms by frequency
       const topQueryTerms = Object.entries(termFrequency)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
-        .map(([term, count]) => ({ term, count }));
+        .map(([term, count]) => ({ 
+          term, 
+          count: count as number 
+        }));
       
       res.json({
         summary: {

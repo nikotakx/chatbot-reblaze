@@ -18,41 +18,26 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
     // Process the content to fix image paths and references
     let processedContent = content;
     
-    // Define a renderer for the marked library to customize image rendering
-    const renderer = new marked.Renderer();
-    
-    // Custom image renderer to handle different path formats
-    renderer.image = function(href: string, title: string, text: string) {
-      let imageUrl = href;
-      
-      // Handle the GitBook-style image paths
-      if (href.includes('.gitbook/assets') || href.startsWith('../') || href.startsWith('./')) {
-        // For demo purposes, we can't access these relative paths
-        // In a production environment, you would map these to actual URLs
-        console.log(`Replacing relative image path: ${href}`);
-        imageUrl = PLACEHOLDER_IMAGE_URL;
+    // Use a simpler approach - preprocess the Markdown to replace relative image paths
+    // Find all markdown image references ![alt](path) and adjust the paths
+    const imgRegex = /!\[(.*?)\]\((.*?)\)/g;
+    processedContent = processedContent.replace(imgRegex, (match, alt, path) => {
+      // Skip if it's already an absolute URL
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return match;
       }
       
-      // For images with http/https URLs, use them directly
-      if (!(href.startsWith('http://') || href.startsWith('https://'))) {
-        imageUrl = PLACEHOLDER_IMAGE_URL;
+      // Replace relative paths with placeholder
+      if (path.includes('.gitbook/assets') || path.startsWith('../') || path.startsWith('./')) {
+        return `![${alt}](${PLACEHOLDER_IMAGE_URL})`;
       }
       
-      // Return the image tag with proper alt text and styling
-      return `<img src="${imageUrl}" alt="${text || 'Image'}" title="${title || ''}" class="rounded-md max-w-full max-h-96 object-contain my-4" />`;
-    };
-    
-    // Set marked options
-    marked.setOptions({
-      renderer: renderer,
-      gfm: true,          // GitHub Flavored Markdown
-      breaks: true,       // Convert line breaks to <br>
-      headerIds: true,    // Add IDs to headers
-      mangle: false       // Don't escape HTML
+      // Default case - use placeholder for all other non-absolute URLs
+      return `![${alt}](${PLACEHOLDER_IMAGE_URL})`;
     });
     
-    // Convert Markdown to HTML
-    const rawHtml = marked(processedContent);
+    // Convert the processed Markdown to HTML
+    const rawHtml = marked.parse(processedContent);
     
     // Sanitize HTML
     const sanitizedHtml = DOMPurify.sanitize(rawHtml);

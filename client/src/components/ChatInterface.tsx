@@ -11,11 +11,17 @@ interface LoadingIndicatorProps {}
 function LoadingIndicator({}: LoadingIndicatorProps) {
   return (
     <div className="flex mb-2 loading-indicator">
-      <div className="bg-white border border-gray-200 shadow-sm px-4 py-3 rounded-t-lg rounded-br-lg">
-        <div className="flex space-x-2">
-          <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
-          <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-          <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+      <div className="bg-white border border-gray-200 shadow-sm px-4 py-3 rounded-t-lg rounded-br-lg max-w-xl">
+        <div className="text-xs mb-1 font-medium text-secondary-700">
+          DocChat
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Thinking</span>
+          <div className="flex space-x-1">
+            <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
+            <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+            <div className="h-2 w-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+          </div>
         </div>
       </div>
     </div>
@@ -104,7 +110,15 @@ export default function ChatInterface({ className = "" }: ChatInterfaceProps) {
 
   // Update messages when chat history data changes
   useEffect(() => {
-    if (chatHistoryData && 'messages' in chatHistoryData && Array.isArray(chatHistoryData.messages)) {
+    // Type guard check for chat history data
+    const isValidChatHistoryData = (data: unknown): data is { messages: ChatMessageType[] } => {
+      return data !== null && 
+             typeof data === 'object' && 
+             'messages' in (data as Record<string, unknown>) && 
+             Array.isArray((data as Record<string, unknown>).messages);
+    };
+    
+    if (isValidChatHistoryData(chatHistoryData)) {
       console.log("Received chat history:", chatHistoryData.messages);
       setMessages(chatHistoryData.messages);
     }

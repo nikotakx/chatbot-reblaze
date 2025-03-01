@@ -10,10 +10,17 @@ const openai = new OpenAI({
 
 // Initialize the context template for chat completion
 const SYSTEM_PROMPT = `
-You are a documentation assistant for a product. Your goal is to provide helpful, accurate responses based ONLY on the documentation provided.
+You are a documentation assistant for Reblaze, a cloud-based security platform. Your goal is to provide helpful, accurate responses based ONLY on the documentation provided.
 If the documentation provided doesn't contain the answer, say "I don't have information about that in the documentation." Do not make up answers.
 
 Some documentation chunks might include references to images. When they do, include these images in your response by referring to their URLs.
+
+Important instructions:
+1. If you're not sure about an answer, focus on what you DO know from the documentation.
+2. Always specify which parts of the documentation you're using in your answer.
+3. For technical questions, be precise and include any relevant configuration examples from the documentation.
+4. Format your responses with Markdown for readability.
+5. For questions about features or functionality, explain how they work and provide context.
 `;
 
 export interface RelevantDocumentationChunk {
@@ -26,14 +33,31 @@ export async function chatWithDocumentation(
   relevantDocumentation: RelevantDocumentationChunk[],
   chatHistory: { role: string; content: string }[] = []
 ): Promise<string> {
+  // Log the number of relevant docs found for debugging
+  console.log(`Found ${relevantDocumentation.length} relevant documentation chunks for query: "${question}"`);
+  
+  // Log similarity scores for debugging
+  if (relevantDocumentation.length > 0) {
+    console.log("Top document similarities:");
+    relevantDocumentation.forEach((doc, index) => {
+      // Safely get the path from metadata if it exists
+      const metadata = doc.chunk.metadata as Record<string, any>;
+      const path = metadata && metadata.path ? metadata.path : "unknown";
+      console.log(`  ${index + 1}. ${path} - Score: ${doc.similarity.toFixed(4)}`);
+    });
+  } else {
+    console.log("No relevant documentation chunks found. Check vector storage and embedding creation.");
+  }
+  
   // Format the documentation chunks into a single context string
   const documentationContext = relevantDocumentation
     .map((doc) => {
-      const metadata = doc.chunk.metadata as any;
-      let chunkText = `From ${doc.chunk.metadata?.path || "unknown"}:\n${doc.chunk.content}`;
+      const metadata = doc.chunk.metadata as Record<string, any>;
+      const path = metadata && metadata.path ? metadata.path : "unknown";
+      let chunkText = `From ${path}:\n${doc.chunk.content}`;
       
       // Add image information if available
-      if (metadata?.hasImage && metadata?.imageUrl) {
+      if (metadata && metadata.hasImage && metadata.imageUrl) {
         chunkText += `\n[Image: ${metadata.imageUrl}${metadata.imageAlt ? ` - ${metadata.imageAlt}` : ''}]`;
       }
       

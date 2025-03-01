@@ -16,17 +16,23 @@ export class VectorStore {
     try {
       // Get all chunks from storage
       const chunks = await storage.getAllDocumentationChunks();
+      console.log(`VectorStore.search: Retrieved ${chunks.length} chunks total`);
 
       // If no chunks, return empty array
       if (chunks.length === 0) {
+        console.log("VectorStore.search: No chunks found in storage");
         return [];
       }
 
       // Create query embedding
+      console.log(`VectorStore.search: Creating embedding for query: "${query}"`);
       const queryEmbedding = await createEmbedding(query);
 
       // For each chunk, calculate cosine similarity
       const results: SearchResult[] = [];
+      let validEmbeddingCount = 0;
+      let parseErrorCount = 0;
+      let emptyEmbeddingCount = 0;
 
       for (const chunk of chunks) {
         let chunkEmbedding: number[];
@@ -34,29 +40,42 @@ export class VectorStore {
         // Parse embedding from string
         try {
           chunkEmbedding = chunk.embedding ? JSON.parse(chunk.embedding) : [];
+          
+          // Skip if no embedding
+          if (!chunkEmbedding || chunkEmbedding.length === 0) {
+            emptyEmbeddingCount++;
+            continue;
+          }
+
+          validEmbeddingCount++;
+          
+          // Calculate cosine similarity
+          const similarity = cosineSimilarity(queryEmbedding, chunkEmbedding);
+          
+          results.push({
+            chunk,
+            similarity
+          });
         } catch (e) {
+          parseErrorCount++;
           console.warn(`Failed to parse embedding for chunk ${chunk.id}`);
           continue;
         }
-
-        // Skip if no embedding
-        if (!chunkEmbedding || chunkEmbedding.length === 0) {
-          continue;
-        }
-
-        // Calculate cosine similarity
-        const similarity = cosineSimilarity(queryEmbedding, chunkEmbedding);
-        
-        results.push({
-          chunk,
-          similarity
-        });
       }
 
+      console.log(`VectorStore.search: Statistics - ` +
+        `Valid Embeddings: ${validEmbeddingCount}, ` + 
+        `Parse Errors: ${parseErrorCount}, ` +
+        `Empty Embeddings: ${emptyEmbeddingCount}`);
+
       // Sort by similarity (descending) and take top K
-      return results
+      const sortedResults = results
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, topK);
+      
+      console.log(`VectorStore.search: Found ${sortedResults.length} relevant results`);
+      
+      return sortedResults;
     } catch (error) {
       console.error("Error searching vector store:", error);
       return [];

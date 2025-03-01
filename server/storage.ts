@@ -253,6 +253,11 @@ export class MemStorage implements IStorage {
       .filter((message) => message.sessionId === sessionId)
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
+  
+  async getAllChatMessages(): Promise<ChatMessage[]> {
+    return Array.from(this.chatMessages.values())
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
 
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
     const id = this.currentChatMessageId++;
@@ -264,6 +269,10 @@ export class MemStorage implements IStorage {
     };
     this.chatMessages.set(id, chatMessage);
     return chatMessage;
+  }
+  
+  async deleteChatMessage(id: number): Promise<boolean> {
+    return this.chatMessages.delete(id);
   }
 
   // Add some sample data for testing
@@ -651,10 +660,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(chatMessages.sessionId, sessionId))
       .orderBy(chatMessages.timestamp);
   }
+  
+  async getAllChatMessages(): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .orderBy(desc(chatMessages.timestamp));
+  }
 
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
     const [createdMessage] = await db.insert(chatMessages).values(message).returning();
     return createdMessage;
+  }
+  
+  async deleteChatMessage(id: number): Promise<boolean> {
+    const [deletedMessage] = await db
+      .delete(chatMessages)
+      .where(eq(chatMessages.id, id))
+      .returning();
+    return !!deletedMessage;
   }
 }
 

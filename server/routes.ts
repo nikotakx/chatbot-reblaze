@@ -314,6 +314,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all chat logs (admin only)
+  apiRouter.get("/admin/chats", async (_req: Request, res: Response) => {
+    try {
+      // This endpoint will get all chat sessions
+      // First, get all chat messages
+      const allMessages = await storage.getAllChatMessages();
+      
+      // Group messages by sessionId
+      const sessions = new Map();
+      
+      allMessages.forEach(message => {
+        if (!sessions.has(message.sessionId)) {
+          sessions.set(message.sessionId, {
+            sessionId: message.sessionId,
+            messages: [],
+            startTime: message.timestamp,
+            lastActivity: message.timestamp,
+            messageCount: 0
+          });
+        }
+        
+        const session = sessions.get(message.sessionId);
+        session.messageCount++;
+        
+        // Keep track of the first and last message timestamps
+        if (new Date(message.timestamp) < new Date(session.startTime)) {
+          session.startTime = message.timestamp;
+        }
+        
+        if (new Date(message.timestamp) > new Date(session.lastActivity)) {
+          session.lastActivity = message.timestamp;
+        }
+      });
+      
+      res.json({
+        sessions: Array.from(sessions.values())
+      });
+    } catch (error) {
+      console.error("Error fetching chat sessions:", error);
+      res.status(500).json({ error: "Failed to fetch chat sessions" });
+    }
+  });
+  
+  // Get detailed analytics about system usage
+  apiRouter.get("/admin/analytics", async (_req: Request, res: Response) => {
+    try {
+      const allMessages = await storage.getAllChatMessages();
+      const totalQueries = allMessages.filter(msg => msg.role === 'user').length;
+      const totalResponses = allMessages.filter(msg => msg.role === 'assistant').length;
+      
+      // Group by day for time-series data
+      const messagesByDay = new Map();
+      
+      allMessages.forEach(message => {
+        const date = new Date(message.timestamp).toISOString().split('T')[0];
+        
+        if (!messagesByDay.has(date)) {
+          messagesByDay.set(date, { date, queries: 0, responses: 0 });
+        }
+        
+        const dayData = messagesByDay.get(date);
+        
+        if (message.role === 'user') {
+          dayData.queries++;
+        } else if (message.role === 'assistant') {
+          dayData.responses++;
+        }
+      });
+      
+      // Calculate token usage estimates (rough approximation)
+      const userMessages = allMessages.filter(msg => msg.role === 'user');
+      const assistantMessages = allMessages.filter(msg => msg.role === 'assistant');
+      
+      const estimatedTokenCount = {
+        input: userMessages.reduce((sum, msg) => sum + (msg.content.length / 4), 0),
+        output: assistantMessages.reduce((sum, msg) => sum + (msg.content.length / 4), 0)
+      };
+      
+      // Find popular query terms
+      const queryTerms = userMessages.flatMap(msg => 
+        msg.content.toLowerCase()
+           .replace(/[^\w\s]/g, '')
+           .split(/\s+/)
+           .filter(word => word.length > 3)
+      );
+      
+      const termFrequency = queryTerms.reduce((acc, term) => {
+        acc[term] = (acc[term] || 0) + 1;
+        return acc;
+      }, {});
+      
+      // Sort terms by frequency
+      const topQueryTerms = Object.entries(termFrequency)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([term, count]) => ({ term, count }));
+      
+      res.json({
+        summary: {
+          totalSessions: new Set(allMessages.map(m => m.sessionId)).size,
+          totalQueries,
+          totalResponses,
+          estimatedTokens: {
+            input: Math.round(estimatedTokenCount.input),
+            output: Math.round(estimatedTokenCount.output),
+            total: Math.round(estimatedTokenCount.input + estimatedTokenCount.output)
+          }
+        },
+        timeSeries: Array.from(messagesByDay.values()).sort((a, b) => a.date.localeCompare(b.date)),
+        topQueryTerms
+      });
+    } catch (error) {
+      console.error("Error generating analytics:", error);
+      res.status(500).json({ error: "Failed to generate analytics" });
+    }
+  });
+  
+  // Delete a chat message
+  apiRouter.delete("/admin/chat/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      const success = await storage.deleteChatMessage(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Message not found or already deleted" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting chat message:", error);
+      res.status(500).json({ error: "Failed to delete chat message" });
+    }
+  });
+
   app.use("/api", apiRouter);
 
   const httpServer = createServer(app);

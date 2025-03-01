@@ -9,7 +9,7 @@ describe('Schema Validation', () => {
   describe('askQuestionSchema', () => {
     it('should validate valid input', () => {
       const validInput = {
-        question: 'How do I use the API?',
+        message: 'How do I use the API?',
         sessionId: '12345'
       };
       
@@ -19,7 +19,7 @@ describe('Schema Validation', () => {
 
     it('should reject invalid input', () => {
       const invalidInput = {
-        // Missing question field
+        // Missing message field
         sessionId: '12345'
       };
       
@@ -27,13 +27,13 @@ describe('Schema Validation', () => {
       expect(result.success).toBe(false);
       
       if (!result.success) {
-        expect(result.error.issues[0].path).toContain('question');
+        expect(result.error.issues[0].path).toContain('message');
       }
     });
 
-    it('should reject empty question', () => {
+    it('should reject empty message', () => {
       const invalidInput = {
-        question: '',
+        message: '',
         sessionId: '12345'
       };
       
@@ -45,7 +45,8 @@ describe('Schema Validation', () => {
   describe('refreshRepositorySchema', () => {
     it('should validate valid input', () => {
       const validInput = {
-        repositoryId: 1
+        url: 'https://github.com/example/repo',
+        branch: 'main'
       };
       
       const result = refreshRepositorySchema.safeParse(validInput);
@@ -54,7 +55,8 @@ describe('Schema Validation', () => {
 
     it('should reject invalid input', () => {
       const invalidInput = {
-        repositoryId: 'not-a-number'
+        url: 'not-a-url',
+        branch: 'main'
       };
       
       const result = refreshRepositorySchema.safeParse(invalidInput);

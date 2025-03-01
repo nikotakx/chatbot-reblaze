@@ -15,15 +15,19 @@ export default function Header({ onToggleAdmin }: HeaderProps) {
     <header className="bg-background border-b border-border py-4 px-6 flex items-center justify-between">
       <div className="flex items-center space-x-3">
         <Link href="/">
-          <span className="text-primary text-xl font-semibold cursor-pointer">DocChat</span>
+          <span className="text-primary text-xl font-semibold cursor-pointer">
+            L11-CHAT-AI
+          </span>
         </Link>
-        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">Beta</span>
+        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+          Beta
+        </span>
         <RealtimeStatus className="ml-3" />
       </div>
-      
+
       <div className="flex items-center space-x-4">
         {/* ThemeSwitcher removed as requested */}
-        <button 
+        <button
           onClick={onToggleAdmin}
           className="text-sm flex items-center space-x-1 text-muted-foreground hover:text-primary transition"
         >
@@ -39,7 +43,7 @@ export default function Header({ onToggleAdmin }: HeaderProps) {
             </>
           )}
         </button>
-        
+
         <div className="flex items-center space-x-2">
           <span className="text-sm font-medium">Admin User</span>
           <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">

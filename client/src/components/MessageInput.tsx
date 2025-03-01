@@ -54,7 +54,7 @@ export default function MessageInput({
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full px-4 py-3 focus:outline-none resize-none h-12 max-h-36 min-h-[48px]"
-              placeholder="Ask a question about the documentation..."
+              placeholder="Ask a question about the Reblaze product..."
               disabled={isLoading}
             />
             <div className="flex items-center pr-3 space-x-2">

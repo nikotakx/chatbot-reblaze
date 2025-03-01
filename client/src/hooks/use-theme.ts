@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -9,63 +9,52 @@ type Theme = 'light' | 'dark' | 'system';
  */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Check for saved theme preference
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    
-    // Return saved theme, or default to system
-    return savedTheme || 'system';
+    // Try to get the theme from localStorage
+    const storedTheme = localStorage.getItem('theme') as Theme | null;
+    // Return the stored theme if it's valid, otherwise default to 'system'
+    return storedTheme && ['light', 'dark', 'system'].includes(storedTheme)
+      ? storedTheme
+      : 'system';
   });
 
-  // Apply theme changes to document and localStorage
-  useEffect(() => {
-    const root = window.document.documentElement;
-    
-    // Remove all existing theme classes
-    root.classList.remove('light', 'dark');
-    
-    // Update localStorage
-    localStorage.setItem('theme', theme);
-    
-    if (theme === 'system') {
-      // Apply system preference
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-    } else {
-      // Apply user preference
-      root.classList.add(theme);
-    }
-  }, [theme]);
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
-  // Listen for system theme changes if using system preference
+  // Update the resolved theme based on system preference if theme is 'system'
   useEffect(() => {
-    if (theme !== 'system') return;
-    
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
-    // Update theme when system preference changes
-    const handleChange = () => {
-      const root = window.document.documentElement;
-      root.classList.remove('light', 'dark');
-      root.classList.add(mediaQuery.matches ? 'dark' : 'light');
+    const updateResolvedTheme = () => {
+      const systemTheme = mediaQuery.matches ? 'dark' : 'light';
+      setResolvedTheme(theme === 'system' ? systemTheme : theme as 'light' | 'dark');
     };
+
+    updateResolvedTheme();
+    mediaQuery.addEventListener('change', updateResolvedTheme);
     
-    // Add event listener
-    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', updateResolvedTheme);
+  }, [theme]);
+
+  // Update the document with the current theme
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
     
-    // Initial check
-    handleChange();
-    
-    // Clean up
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    if (theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(systemTheme);
+    } else {
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(theme);
+    }
   }, [theme]);
 
   return {
     theme,
+    resolvedTheme,
     setTheme: (newTheme: Theme) => setTheme(newTheme),
-    isLight: theme === 'light' || (theme === 'system' && !window.matchMedia('(prefers-color-scheme: dark)').matches),
-    isDark: theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+    isLight: resolvedTheme === 'light',
+    isDark: resolvedTheme === 'dark',
     isSystem: theme === 'system'
   };
 }
-
-export default useTheme;

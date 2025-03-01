@@ -10,7 +10,6 @@ import Header from "@/components/Header";
 import ChatInterface from "@/components/ChatInterface";
 import AdminPanel from "@/components/AdminPanel";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ThemeProvider } from "@/components/ThemeProvider";
 
 function MainLayout() {
   const [location, setLocation] = useLocation();
@@ -61,16 +60,14 @@ function MainLayout() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <Switch>
-          <Route path="/" component={MainLayout} />
-          <Route path="/admin" component={MainLayout} />
-          <Route component={NotFound} />
-        </Switch>
-        <Toaster />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <Switch>
+        <Route path="/" component={MainLayout} />
+        <Route path="/admin" component={MainLayout} />
+        <Route component={NotFound} />
+      </Switch>
+      <Toaster />
+    </QueryClientProvider>
   );
 }
 

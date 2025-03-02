@@ -11,7 +11,7 @@ export async function processMarkdownForVectorStorage(
   const chunks: InsertDocumentationChunk[] = [];
   
   // Special case: if content is very short, just store it as a single chunk
-  if (content.trim().length < 500) {
+  if (content.trim().length < 800) {
     const metadata: Record<string, any> = {
       path: file.path,
       section: "full content",
@@ -235,8 +235,8 @@ function splitIntoSections(content: string): Section[] {
   
   // Process sections based on size - using larger chunks
   const processedSections: Section[] = [];
-  const MIN_SECTION_SIZE = 500; // Increased minimum characters for a section
-  const MAX_SECTION_SIZE = 8000; // Increased maximum characters before splitting
+  const MIN_SECTION_SIZE = 800; // Increased minimum characters for a section
+  const MAX_SECTION_SIZE = 10000; // Increased maximum characters before splitting
   
   // First pass: group sections by top-level heading to maintain context
   let currentTopSection: Section | null = null;
@@ -251,8 +251,8 @@ function splitIntoSections(content: string): Section[] {
     if (isTopLevel) {
       // If we have a previous top section, add it to processed sections
       if (currentTopSection && currentTopSectionContent.length > 0) {
-        // Only split if it's very large
-        if (currentTopSectionContent.length > MAX_SECTION_SIZE * 1.5) {
+        // Only split if it's extremely large
+        if (currentTopSectionContent.length > MAX_SECTION_SIZE * 2) {
           const paragraphs = splitByParagraphs(currentTopSectionContent);
           for (const paragraph of paragraphs) {
             if (paragraph.length > 0) {
@@ -288,7 +288,7 @@ function splitIntoSections(content: string): Section[] {
   
   // Add the last top section if any
   if (currentTopSection && currentTopSectionContent.length > 0) {
-    if (currentTopSectionContent.length > MAX_SECTION_SIZE * 1.5) {
+    if (currentTopSectionContent.length > MAX_SECTION_SIZE * 2) {
       const paragraphs = splitByParagraphs(currentTopSectionContent);
       for (const paragraph of paragraphs) {
         if (paragraph.length > 0) {
@@ -370,10 +370,13 @@ function splitByParagraphs(content: string): string[] {
   // Combine paragraphs to create meaningful chunks
   const result: string[] = [];
   let currentChunk = "";
-  const MIN_CHUNK_SIZE = 250; // Increased minimum characters for a standalone chunk
-  const MAX_CHUNK_SIZE = 8000; // Increased maximum characters for a chunk
+  const MIN_CHUNK_SIZE = 500; // Increased minimum characters for a standalone chunk
+  const MAX_CHUNK_SIZE = 12000; // Increased maximum characters for a chunk
   
-  for (const paragraph of paragraphs) {
+  // Group paragraphs into larger semantic chunks
+  // This ensures we're maintaining more context by having larger chunks with multiple paragraphs
+  for (let i = 0; i < paragraphs.length; i++) {
+    const paragraph = paragraphs[i];
     const trimmedParagraph = paragraph.trim();
     
     // If paragraph contains a special block reference, restore it
@@ -393,23 +396,76 @@ function splitByParagraphs(content: string): string[] {
       continue;
     }
     
-    // If adding this paragraph would make the chunk too large, start a new chunk
-    if (currentChunk && (currentChunk.length + processedParagraph.length > MAX_CHUNK_SIZE)) {
-      result.push(currentChunk);
-      currentChunk = processedParagraph;
-    } else {
-      // Add a space between paragraphs in the same chunk
+    // If this is the first paragraph or if adding this paragraph would make the chunk reasonable
+    if (!currentChunk || (currentChunk.length + processedParagraph.length <= MAX_CHUNK_SIZE)) {
+      // Add to current chunk
       if (currentChunk) {
         currentChunk += "\n\n" + processedParagraph;
       } else {
         currentChunk = processedParagraph;
       }
+      
+      // If we're at the last paragraph, add the current chunk to result
+      if (i === paragraphs.length - 1 && currentChunk) {
+        result.push(currentChunk);
+        currentChunk = "";
+      }
+    } else {
+      // Current chunk is big enough, add it to result and start a new one
+      result.push(currentChunk);
+      currentChunk = processedParagraph;
+      
+      // If we're at the last paragraph, add the current chunk to result
+      if (i === paragraphs.length - 1 && currentChunk) {
+        result.push(currentChunk);
+        currentChunk = "";
+      }
     }
   }
   
-  // Add the last chunk if it exists
+  // Add the last chunk if it exists (this is a failsafe, should not be needed)
   if (currentChunk) {
     result.push(currentChunk);
+  }
+  
+  // Final pass: merge small chunks with larger chunks if possible
+  if (result.length > 1) {
+    const mergedResult: string[] = [];
+    let mergedChunk = "";
+    
+    for (let i = 0; i < result.length; i++) {
+      const chunk = result[i];
+      
+      // If chunk is small and we can merge it
+      if (chunk.length < MIN_CHUNK_SIZE && mergedChunk) {
+        // Merge with previous chunk if it won't exceed max size
+        if (mergedChunk.length + chunk.length + 2 <= MAX_CHUNK_SIZE) {
+          mergedChunk += "\n\n" + chunk;
+        } else {
+          // Add previous merged chunk and start a new one
+          mergedResult.push(mergedChunk);
+          mergedChunk = chunk;
+        }
+      } 
+      // If chunk is small and we don't have a previous chunk, try to merge with next chunk
+      else if (chunk.length < MIN_CHUNK_SIZE && !mergedChunk && i < result.length - 1) {
+        mergedChunk = chunk;
+      }
+      // For large chunks, add as is or start as a new merged chunk
+      else {
+        if (mergedChunk) {
+          mergedResult.push(mergedChunk);
+        }
+        mergedChunk = chunk;
+      }
+    }
+    
+    // Add the last merged chunk
+    if (mergedChunk) {
+      mergedResult.push(mergedChunk);
+    }
+    
+    return mergedResult;
   }
   
   // If we have no results but had content, return the original content

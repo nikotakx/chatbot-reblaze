@@ -1,0 +1,36 @@
+rbz-v5-docbot-postgres-1  | 2025-03-02 11:42:33.130 UTC [29] LOG:  redo done at 0/1969300 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+rbz-v5-docbot-postgres-1  | 2025-03-02 11:42:33.132 UTC [27] LOG:  checkpoint starting: end-of-recovery immediate wait
+rbz-v5-docbot-postgres-1  | 2025-03-02 11:42:33.137 UTC [27] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.006 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB
+rbz-v5-docbot-postgres-1  | 2025-03-02 11:42:33.142 UTC [1] LOG:  database system is ready to accept connections
+rbz-v5-docbot-pgadmin-1   | email config is {'CHECK_EMAIL_DELIVERABILITY': False, 'ALLOW_SPECIAL_EMAIL_DOMAINS': [], 'GLOBALLY_DELIVERABLE': True}
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-pgadmin-1   | 'admin@docubot.local' does not appear to be a valid email address. Please reset the PGADMIN_DEFAULT_EMAIL environment variable and try again.
+rbz-v5-docbot-pgadmin-1   | Validation output: The part after the @-sign is a special-use or reserved name that cannot be used with email.
+rbz-v5-docbot-pgadmin-1   | False
+rbz-v5-docbot-pgadmin-1 exited with code 1
+rbz-v5-docbot-app-dev-1   |
+rbz-v5-docbot-app-dev-1   | > rest-express@1.0.0 dev
+rbz-v5-docbot-app-dev-1   | > tsx server/index.ts

@@ -25,7 +25,7 @@ The development environment includes:
 - **Web Application** - Available at http://localhost:5000
 - **PostgreSQL Database** - Available at localhost:5432
 - **pgAdmin** - Database administration UI at http://localhost:8080
-  - Login: admin@docubot.local
+  - Login: admin@example.com
   - Password: admin
 
 ## Environment Setup
@@ -51,6 +51,7 @@ The `dev-docker.sh` script provides easy commands for Docker operations:
 | `./dev-docker.sh db-studio` | Start Drizzle Studio |
 | `./dev-docker.sh logs` | Show container logs |
 | `./dev-docker.sh restart` | Restart all services |
+| `./dev-docker.sh restart [service]` | Restart specific service (app-dev, postgres, pgadmin) |
 | `./dev-docker.sh shell` | Open shell in app container |
 
 ## Development Workflow
@@ -127,3 +128,23 @@ docker-compose -f docker-compose.dev.yml restart app-dev
 ### Port Conflicts
 
 If you have port conflicts, edit `docker-compose.dev.yml` to change the port mappings before starting the services.
+
+### pgAdmin Issues
+
+If pgAdmin is not starting or you're having trouble logging in:
+
+```bash
+# Check pgAdmin logs
+docker-compose -f docker-compose.dev.yml logs pgadmin
+
+# Restart just pgAdmin
+./dev-docker.sh restart pgadmin
+```
+
+When connecting to PostgreSQL in pgAdmin:
+1. Add a new server
+2. Connection settings:
+   - Host: postgres (use the service name, not localhost)
+   - Port: 5432
+   - Username: postgres
+   - Password: postgres

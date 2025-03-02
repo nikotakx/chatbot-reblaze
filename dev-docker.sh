@@ -34,13 +34,23 @@ case $command in
     ;;
   
   logs)
-    echo "📋 Showing logs..."
-    docker-compose -f docker-compose.dev.yml logs -f
+    if [ -z "$2" ]; then
+      echo "📋 Showing all logs..."
+      docker-compose -f docker-compose.dev.yml logs -f
+    else
+      echo "📋 Showing logs for $2..."
+      docker-compose -f docker-compose.dev.yml logs -f "$2"
+    fi
     ;;
   
   restart)
-    echo "🔄 Restarting services..."
-    docker-compose -f docker-compose.dev.yml restart
+    if [ -z "$2" ]; then
+      echo "🔄 Restarting all services..."
+      docker-compose -f docker-compose.dev.yml restart
+    else
+      echo "🔄 Restarting $2 service..."
+      docker-compose -f docker-compose.dev.yml restart "$2"
+    fi
     ;;
   
   shell)
@@ -59,8 +69,10 @@ case $command in
     echo "  down             - Stop development environment"
     echo "  db-push          - Push schema changes to database"
     echo "  db-studio        - Start Drizzle Studio for database management"
-    echo "  logs             - Show container logs"
+    echo "  logs             - Show all container logs"
+    echo "  logs [service]    - Show logs for specific service"
     echo "  restart          - Restart all services"
+    echo "  restart [service] - Restart a specific service (app-dev, postgres, pgadmin)"
     echo "  shell            - Open shell in app container"
     echo ""
     echo "Environment Info:"

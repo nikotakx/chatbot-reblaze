@@ -48,8 +48,10 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@docubot.local
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
       - PGADMIN_DEFAULT_PASSWORD=admin
+      # Disable email deliverability check
+      - PGADMIN_CONFIG_CHECK_EMAIL_DELIVERABILITY=False
     ports:
       - "8080:80"
     depends_on:

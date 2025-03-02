@@ -38,6 +38,16 @@ export OPENAI_API_KEY=your-openai-api-key
 export GITHUB_TOKEN=your-github-token
 ```
 
+For accessing private GitHub repositories, you **must** provide a valid GitHub token with appropriate repository access permissions:
+
+1. Go to your GitHub account settings
+2. Navigate to "Developer Settings" > "Personal Access Tokens" > "Tokens (classic)"
+3. Create a new token with at least the "repo" scope (full control of private repositories)
+4. Export the token before starting the containers:
+   ```bash
+   export GITHUB_TOKEN=your-github-token
+   ```
+
 ## Command Reference
 
 The `dev-docker.sh` script provides easy commands for Docker operations:
@@ -49,7 +59,8 @@ The `dev-docker.sh` script provides easy commands for Docker operations:
 | `./dev-docker.sh down` | Stop development environment |
 | `./dev-docker.sh db-push` | Push schema changes to database |
 | `./dev-docker.sh db-studio` | Start Drizzle Studio |
-| `./dev-docker.sh logs` | Show container logs |
+| `./dev-docker.sh logs` | Show all container logs |
+| `./dev-docker.sh logs [service]` | Show logs for specific service (app-dev, postgres, pgadmin) |
 | `./dev-docker.sh restart` | Restart all services |
 | `./dev-docker.sh restart [service]` | Restart specific service (app-dev, postgres, pgadmin) |
 | `./dev-docker.sh shell` | Open shell in app container |
@@ -99,15 +110,17 @@ The following data is persisted across container restarts:
 If you're having trouble connecting to the database:
 
 ```bash
-# Check if the postgres container is running
+# Check if all containers are running
 docker-compose -f docker-compose.dev.yml ps
 
 # Check postgres logs
-docker-compose -f docker-compose.dev.yml logs postgres
+./dev-docker.sh logs postgres
 
 # Reset database (will delete all data)
+./dev-docker.sh down
+# Use -v flag to remove volumes
 docker-compose -f docker-compose.dev.yml down -v
-docker-compose -f docker-compose.dev.yml up -d
+./dev-docker.sh up-detached
 ```
 
 ### Application Issues
@@ -116,10 +129,10 @@ If the application isn't working correctly:
 
 ```bash
 # Check application logs
-docker-compose -f docker-compose.dev.yml logs app-dev
+./dev-docker.sh logs app-dev
 
 # Restart just the application container
-docker-compose -f docker-compose.dev.yml restart app-dev
+./dev-docker.sh restart app-dev
 
 # Open a shell in the application container
 ./dev-docker.sh shell
@@ -135,7 +148,7 @@ If pgAdmin is not starting or you're having trouble logging in:
 
 ```bash
 # Check pgAdmin logs
-docker-compose -f docker-compose.dev.yml logs pgadmin
+./dev-docker.sh logs pgadmin
 
 # Restart just pgAdmin
 ./dev-docker.sh restart pgadmin

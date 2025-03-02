@@ -55,7 +55,12 @@ case $command in
     if [ "$confirmation" = "y" ]; then
       echo "🗑️ Resetting database..."
       docker-compose -f docker-compose.dev.yml down -v
+      # Start just the database first to ensure it's initialized before the app connects
       docker-compose -f docker-compose.dev.yml up -d postgres
+      echo "⏳ Waiting for database to initialize..."
+      sleep 5
+      # Start remaining services
+      ./dev-docker.sh up-detached
       echo "✅ Database reset complete"
     else
       echo "❌ Operation cancelled."

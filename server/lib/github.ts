@@ -1,6 +1,60 @@
 import { InsertDocumentationFile, InsertDocumentationImage } from "@shared/schema";
 import fetch from "node-fetch";
 
+/**
+ * Creates headers for GitHub API requests with authentication if available
+ */
+function createGitHubHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Accept": "application/vnd.github.v3+json",
+  };
+  
+  if (process.env.GITHUB_TOKEN) {
+    headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+    // Only log this once to avoid excessive logging
+    if (!createGitHubHeaders.hasLoggedTokenMessage) {
+      console.log("Using GitHub authentication token for API requests");
+      createGitHubHeaders.hasLoggedTokenMessage = true;
+    }
+  } else if (!createGitHubHeaders.hasLoggedWarningMessage) {
+    console.warn("No GitHub token provided. Private repositories will not be accessible.");
+    createGitHubHeaders.hasLoggedWarningMessage = true;
+  }
+  
+  return headers;
+}
+
+// Add static properties to the function to track if messages have been logged
+createGitHubHeaders.hasLoggedTokenMessage = false;
+createGitHubHeaders.hasLoggedWarningMessage = false;
+
+/**
+ * Handle GitHub API response errors, including rate limiting
+ */
+async function handleGitHubApiError(response: Response): Promise<never> {
+  const status = response.status;
+  let errorMessage = `GitHub API Error: Status ${status}`;
+  
+  try {
+    const error: GitHubApiError = await response.json() as GitHubApiError;
+    errorMessage = `GitHub API Error: ${error.message}`;
+    
+    // Handle specific error cases
+    if (status === 401) {
+      errorMessage += ". Authentication failed. Check your GitHub token.";
+    } else if (status === 403) {
+      errorMessage += ". Rate limit may have been exceeded or insufficient permissions.";
+    } else if (status === 404) {
+      errorMessage += ". Repository or resource not found. Check the URL and ensure it's public or you have access.";
+    }
+  } catch (parseError) {
+    // If we can't parse the JSON, just use the status code
+    console.error("Failed to parse GitHub API error response:", parseError);
+  }
+  
+  throw new Error(errorMessage);
+}
+
 interface GitHubFile {
   name: string;
   path: string;
@@ -61,14 +115,7 @@ export async function fetchRepositoryFiles(
   const branchesUrl = `https://api.github.com/repos/${owner}/${repo}/branches`;
   console.log(`Checking available branches: ${branchesUrl}`);
   
-  const headers: Record<string, string> = {
-    "Accept": "application/vnd.github.v3+json",
-  };
-  
-  // Add authentication if GitHub token is provided
-  if (process.env.GITHUB_TOKEN) {
-    headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
-  }
+  const headers = createGitHubHeaders();
   
   try {
     // Check available branches first
@@ -193,13 +240,7 @@ async function fetchFileContent(
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
   console.log(`Fetching file content from: ${apiUrl}`);
   
-  const headers: Record<string, string> = {
-    "Accept": "application/vnd.github.v3+json",
-  };
-  
-  if (process.env.GITHUB_TOKEN) {
-    headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
-  }
+  const headers = createGitHubHeaders();
 
   try {
     const response = await fetch(apiUrl, { headers });

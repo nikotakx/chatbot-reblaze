@@ -1,0 +1,69 @@
+rbz-v5-docbot-app-dev-1  |
+rbz-v5-docbot-app-dev-1  | > rest-express@1.0.0 dev
+rbz-v5-docbot-app-dev-1  | > tsx server/index.ts
+rbz-v5-docbot-app-dev-1  |
+rbz-v5-docbot-app-dev-1  | Database connection established using standard PostgreSQL
+rbz-v5-docbot-app-dev-1  | WebSocket server is listening
+rbz-v5-docbot-app-dev-1  | 3:35:20 PM [express] serving on port 5000
+rbz-v5-docbot-app-dev-1  | WebSocket client connected from 172.26.0.1. Total: 1, All-time: 1
+rbz-v5-docbot-app-dev-1  | Error updating repository config: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getRepositoryConfig (/app/server/storage.ts:627:22)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:159:30)
+rbz-v5-docbot-app-dev-1  | 3:35:33 PM [express] POST /api/admin/repository 500 in 44ms :: {"error":"Failed to update repository…
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=1, Received=0
+rbz-v5-docbot-app-dev-1  | Error fetching repository config: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getRepositoryConfig (/app/server/storage.ts:627:22)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:145:22)
+rbz-v5-docbot-app-dev-1  | 3:35:48 PM [express] GET /api/admin/repository 500 in 7ms :: {"error":"Failed to fetch repository co…
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=2, Received=0
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=3, Received=0
+rbz-v5-docbot-app-dev-1  | WebSocket message received from 172.26.0.1: { type: 'echo', data: { ping: 1740929761742 } }
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=5, Received=1
+rbz-v5-docbot-app-dev-1  | WebSocket client disconnected with code 1001 and reason: . Remaining clients: 0
+rbz-v5-docbot-app-dev-1  | WebSocket client connected from 172.26.0.1. Total: 1, All-time: 2
+rbz-v5-docbot-app-dev-1  | Error fetching documentation stats: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getAllDocumentationFiles (/app/server/storage.ts:496:12)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:306:21)
+rbz-v5-docbot-app-dev-1  | 3:36:16 PM [express] GET /api/admin/stats 500 in 9ms :: {"error":"Failed to fetch documentation stat…
+rbz-v5-docbot-app-dev-1  | Error fetching repository config: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getRepositoryConfig (/app/server/storage.ts:627:22)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:145:22)
+rbz-v5-docbot-app-dev-1  | 3:36:16 PM [express] GET /api/admin/repository 500 in 7ms :: {"error":"Failed to fetch repository co…
+rbz-v5-docbot-app-dev-1  | Error fetching documentation files: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getAllDocumentationFiles (/app/server/storage.ts:496:12)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:110:21)
+rbz-v5-docbot-app-dev-1  | 3:36:16 PM [express] GET /api/admin/documentation 500 in 3ms :: {"error":"Failed to fetch documentat…
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=7, Received=1
+rbz-v5-docbot-app-dev-1  | Error updating repository config: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getRepositoryConfig (/app/server/storage.ts:627:22)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:159:30)
+rbz-v5-docbot-app-dev-1  | 3:36:29 PM [express] POST /api/admin/repository 500 in 6ms :: {"error":"Failed to update repository …
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=8, Received=1
+rbz-v5-docbot-app-dev-1  | Error updating repository config: Error: All attempts to open a WebSocket to connect to the database failed. Please refer to https://github.com/neondatabase/serverless/blob/main/CONFIG.md#websocketconstructor-typeof-websocket--undefined. Details: fetch failed
+rbz-v5-docbot-app-dev-1  |     at file:///app/node_modules/@neondatabase/serverless/index.mjs:1345:74
+rbz-v5-docbot-app-dev-1  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+rbz-v5-docbot-app-dev-1  |     at async NeonPreparedQuery.execute (/app/node_modules/src/neon-serverless/session.ts:102:18)
+rbz-v5-docbot-app-dev-1  |     at async DatabaseStorage.getRepositoryConfig (/app/server/storage.ts:627:22)
+rbz-v5-docbot-app-dev-1  |     at async <anonymous> (/app/server/routes.ts:159:30)
+rbz-v5-docbot-app-dev-1  | 3:36:33 PM [express] POST /api/admin/repository 500 in 15ms :: {"error":"Failed to update repository…
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=9, Received=1
+rbz-v5-docbot-app-dev-1  | WebSocket message received from 172.26.0.1: { type: 'echo', data: { ping: 1740929802739 } }
+rbz-v5-docbot-app-dev-1  | Broadcasting heartbeat to 1 connected clients. Stats: Sent=11, Received=2

@@ -27,8 +27,15 @@ class WebSocketClient {
   private listeners: Map<WebSocketEventType, Set<MessageListener>> = new Map();
   private connected = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 3000; // ms
+  private maxReconnectAttempts = 10; // Increased for better resilience
+  private reconnectDelay = 2000; // ms - starting delay
+  private pingInterval: NodeJS.Timeout | null = null;
+  private messageStats = {
+    sent: 0,
+    received: 0,
+    errors: 0,
+    lastMessageTime: 0
+  };
 
   /**
    * Connects to the WebSocket server
@@ -80,34 +87,68 @@ class WebSocketClient {
    * Disconnects from the WebSocket server
    */
   disconnect(): void {
+    // Clear any pending timers
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
+    
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
 
+    // Close the socket if it exists
+    if (this.socket) {
+      try {
+        // Send a clean disconnect message if possible
+        if (this.socket.readyState === WebSocket.OPEN) {
+          this.send('echo', { action: 'disconnect', reason: 'User initiated' });
+        }
+        this.socket.close();
+      } catch (error) {
+        console.warn('Error during WebSocket disconnect:', error);
+      } finally {
+        this.socket = null;
+      }
+    }
+
+    // Reset connection state
     this.connected = false;
     this.reconnectAttempts = 0;
+    
+    console.log('WebSocket connection terminated by client');
   }
 
   /**
    * Sends a message to the WebSocket server
    */
-  send(type: WebSocketEventType, data: any): void {
+  send(type: WebSocketEventType, data: any): boolean {
     if (!this.connected || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.warn('Cannot send message, WebSocket not connected');
-      return;
+      return false;
     }
 
     try {
       const message: WebSocketMessage = { type, data };
-      this.socket.send(JSON.stringify(message));
+      const messageStr = JSON.stringify(message);
+      
+      // Only log non-heartbeat messages to reduce console noise
+      if (!(type === 'echo' && data && (data.ping || data.action === 'ping'))) {
+        console.log('Sending WebSocket message:', type);
+      }
+      
+      // Send the message
+      this.socket.send(messageStr);
+      
+      // Update statistics
+      this.messageStats.sent++;
+      
+      return true;
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
+      this.messageStats.errors++;
+      return false;
     }
   }
 
@@ -139,6 +180,27 @@ class WebSocketClient {
     this.connected = true;
     this.reconnectAttempts = 0;
     
+    // Clear any existing ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+    
+    // Set up a ping interval to help keep the connection alive
+    // Send a small ping message every 30 seconds
+    this.pingInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        // Send a minimal ping message
+        this.send('echo', { ping: Date.now() });
+        this.messageStats.sent++;
+      } else {
+        // If the socket is not open, clear the interval
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+          this.pingInterval = null;
+        }
+      }
+    }, 30000); // 30 seconds
+    
     // Notify listeners of the connection
     this.notifyListeners({
       type: 'connection',
@@ -151,10 +213,29 @@ class WebSocketClient {
    */
   private handleMessage(event: MessageEvent): void {
     try {
+      // Parse the message
       const message = JSON.parse(event.data) as WebSocketMessage;
+      
+      // Update message statistics
+      this.messageStats.received++;
+      this.messageStats.lastMessageTime = Date.now();
+      
+      // Special handling for heartbeat messages
+      if (message.type === 'echo' && message.data && message.data.message === 'Server heartbeat') {
+        // Don't need to do anything special with heartbeats, but we could
+        // update connection health metrics here
+        
+        // If the server sent statistics, log them but only occasionally
+        if (message.data.stats && Math.random() < 0.2) { // Only log ~20% of the time to reduce noise
+          console.log('WebSocket server stats:', message.data.stats);
+        }
+      }
+      
+      // Notify registered listeners about this message
       this.notifyListeners(message);
     } catch (error) {
       console.error('Error parsing WebSocket message:', error);
+      this.messageStats.errors++;
     }
   }
 
@@ -162,9 +243,39 @@ class WebSocketClient {
    * Handles WebSocket close event
    */
   private handleClose(event: CloseEvent): void {
-    console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
+    // Clear any ping interval
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    
+    // Clean close codes (1000, 1001, 1005) vs. error codes
+    const isCleanClose = event.code === 1000 || event.code === 1001 || event.code === 1005;
+    const reason = event.reason || (isCleanClose ? 'Normal closure' : 'Connection error');
+    
+    console.log(`WebSocket connection closed: ${event.code} ${reason}`);
+    
+    // Update connection state
     this.connected = false;
-    this.scheduleReconnect();
+    
+    // If it wasn't a clean close, try to reconnect
+    if (!isCleanClose) {
+      console.warn(`WebSocket closed with error code ${event.code}, attempting to reconnect...`);
+      this.scheduleReconnect();
+    } else if (event.code === 1001) {
+      // Code 1001 means the page is unloading, so don't attempt to reconnect
+      console.log('Page is unloading, not attempting WebSocket reconnection');
+    } else {
+      // For other clean closes, still try to reconnect after a short delay
+      // This helps with temporary server restarts
+      setTimeout(() => this.scheduleReconnect(), 2000);
+    }
+    
+    // Notify listeners about the disconnection
+    this.notifyListeners({
+      type: 'error',
+      message: `Connection closed: ${reason}`
+    });
   }
 
   /**

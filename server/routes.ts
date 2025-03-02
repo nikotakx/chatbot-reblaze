@@ -485,28 +485,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // Setup WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Setup WebSocket server with ping interval to keep connections alive
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    // Setting a larger timeout to prevent premature disconnections
+    clientTracking: true
+  });
 
   // Connected clients
   const clients = new Set<WebSocket>();
 
+  // WebSocket statistics for monitoring
+  let totalConnections = 0;
+  let currentConnections = 0;
+  let messagesSent = 0;
+  let messagesReceived = 0;
+
+  // Event: server listening
+  wss.on('listening', () => {
+    console.log('WebSocket server is listening');
+  });
+
   // Event: client connection
-  wss.on('connection', (ws) => {
-    console.log('WebSocket client connected');
+  wss.on('connection', (ws, req) => {
+    totalConnections++;
+    currentConnections = clients.size + 1;
+    
+    const clientIp = req.socket.remoteAddress || 'unknown';
+    console.log(`WebSocket client connected from ${clientIp}. Total: ${currentConnections}, All-time: ${totalConnections}`);
+    
+    // Add to active clients
     clients.add(ws);
 
     // Send initial connection message
-    ws.send(JSON.stringify({
+    const connectionMessage = {
       type: 'connection',
-      message: 'Connected to Documentation Chatbot WebSocket server'
-    }));
+      message: 'Connected to Documentation Chatbot WebSocket server',
+      stats: {
+        connectedClients: currentConnections,
+        totalConnections: totalConnections
+      }
+    };
+    
+    ws.send(JSON.stringify(connectionMessage));
+    messagesSent++;
+
+    // Set up a ping interval to keep the connection alive
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping(() => {});
+      } else {
+        clearInterval(pingInterval);
+      }
+    }, 30000); // Ping every 30 seconds
 
     // Event: message from client
     ws.on('message', (message) => {
+      messagesReceived++;
       try {
         const data = JSON.parse(message.toString());
-        console.log('WebSocket message received:', data);
+        console.log(`WebSocket message received from ${clientIp}:`, data);
 
         // Echo back the message (for testing purposes)
         if (ws.readyState === WebSocket.OPEN) {
@@ -514,6 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'echo',
             data
           }));
+          messagesSent++;
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -522,46 +562,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'error', 
             message: 'Invalid message format' 
           }));
+          messagesSent++;
         }
       }
     });
 
     // Event: client disconnection
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
+    ws.on('close', (code, reason) => {
+      clearInterval(pingInterval);
       clients.delete(ws);
+      currentConnections = clients.size;
+      console.log(`WebSocket client disconnected with code ${code} and reason: ${reason || 'No reason provided'}. Remaining clients: ${currentConnections}`);
     });
 
     // Event: error
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      console.error(`WebSocket error for client ${clientIp}:`, error);
       clients.delete(ws);
+      currentConnections = clients.size;
+    });
+    
+    // Event: pong (response to ping)
+    ws.on('pong', () => {
+      // Client is alive
     });
   });
 
   // Utility function to broadcast a message to all connected clients
   const broadcastMessage = (type: string, data: any) => {
     const message = JSON.stringify({ type, data });
+    let successCount = 0;
+    
     clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
+      try {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+          messagesSent++;
+          successCount++;
+        }
+      } catch (error) {
+        console.error('Error broadcasting message to client:', error);
       }
     });
+    
+    if (type !== 'echo') { // Don't log heartbeats to reduce noise
+      console.log(`Broadcast ${type} message to ${successCount}/${clients.size} clients`);
+    }
+    
+    return successCount;
   };
 
   // Export the broadcast function to the global scope so it can be used in other modules
   (global as any).wsBroadcast = broadcastMessage;
   
-  // Send a test message every 10 seconds to check WebSocket connectivity
-  setInterval(() => {
+  // Send a heartbeat message to check WebSocket connectivity and keep connections alive
+  const heartbeatInterval = setInterval(() => {
     if (clients.size > 0) {
-      console.log(`Broadcasting test message to ${clients.size} connected clients`);
+      console.log(`Broadcasting heartbeat to ${clients.size} connected clients. Stats: Sent=${messagesSent}, Received=${messagesReceived}`);
       broadcastMessage('echo', { 
         timestamp: new Date().toISOString(),
-        message: 'Server heartbeat'
+        message: 'Server heartbeat',
+        stats: {
+          connectedClients: clients.size,
+          totalConnections: totalConnections,
+          messagesSent: messagesSent,
+          messagesReceived: messagesReceived
+        }
       });
     }
-  }, 10000);
+  }, 10000); // 10 seconds
+  
+  // Clean up interval when server closes
+  httpServer.on('close', () => {
+    clearInterval(heartbeatInterval);
+    console.log('WebSocket server closed, cleaned up intervals');
+  });
 
   return httpServer;
 }

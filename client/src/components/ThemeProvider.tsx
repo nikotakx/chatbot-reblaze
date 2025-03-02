@@ -24,10 +24,16 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Always use light mode
   const theme: Theme = 'light';
   
-  // Set light mode on document
-  document.documentElement.classList.add('light');
-  document.documentElement.classList.remove('dark');
-  document.documentElement.setAttribute('data-theme', 'light');
+  // Use React's useEffect hook to manipulate the DOM after render
+  React.useEffect(() => {
+    // Set light mode on document
+    document.documentElement.classList.add('light');
+    document.documentElement.classList.remove('dark');
+    document.documentElement.setAttribute('data-theme', 'light');
+    
+    // Store the setting in local storage
+    localStorage.setItem('theme', 'light');
+  }, []);
   
   // Dummy setTheme function that does nothing
   const setTheme = (_theme: Theme) => {

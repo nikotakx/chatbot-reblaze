@@ -1,48 +1,15 @@
 version: '3.8'
 
 services:
-  app:
+  nginx:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.nginx
     ports:
-      - "5000:5000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/docubot
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GITHUB_TOKEN=${GITHUB_TOKEN}
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    volumes:
-      - node_modules:/app/node_modules
+      - "80:80"
     networks:
-      - docubot-network
-
-  postgres:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=docubot
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - docubot-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
-  node_modules:
+      - proxy-network
 
 networks:
-  docubot-network:
+  proxy-network:
     driver: bridge

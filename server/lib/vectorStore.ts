@@ -23,9 +23,16 @@ export class VectorStore {
   // Find similar chunks to the query using cosine similarity
   async search(query: string, topK: number = 5): Promise<SearchResult[]> {
     try {
-      // Get all chunks from storage
-      const chunks = await storage.getAllDocumentationChunks();
-      console.log(`VectorStore.search: Retrieved ${chunks.length} chunks total`);
+      // Get all chunks from storage (or use cached chunks if available)
+      let chunks;
+      if (this.cachedChunks) {
+        chunks = this.cachedChunks;
+        console.log(`VectorStore.search: Using ${chunks.length} cached chunks`);
+      } else {
+        chunks = await storage.getAllDocumentationChunks();
+        this.cachedChunks = chunks; // Cache for future queries
+        console.log(`VectorStore.search: Retrieved ${chunks.length} chunks total`);
+      }
 
       // If no chunks, return empty array
       if (chunks.length === 0) {

@@ -522,8 +522,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const config = await storage.getRepositoryConfig();
       if (config) {
         await storage.updateRepositoryConfig(config.id, {
-          ...config,
-          lastSynced: null
+          url: config.url,
+          branch: config.branch,
+          isActive: config.isActive
+          // lastSynced will be reset to NULL
         });
       }
       

@@ -31,7 +31,7 @@ createGitHubHeaders.hasLoggedWarningMessage = false;
 /**
  * Handle GitHub API response errors, including rate limiting
  */
-async function handleGitHubApiError(response: Response): Promise<never> {
+async function handleGitHubApiError(response: any): Promise<never> {
   const status = response.status;
   let errorMessage = `GitHub API Error: Status ${status}`;
   
@@ -122,8 +122,7 @@ export async function fetchRepositoryFiles(
     const branchesResponse = await fetch(branchesUrl, { headers });
     
     if (!branchesResponse.ok) {
-      const error: GitHubApiError = await branchesResponse.json() as GitHubApiError;
-      throw new Error(`GitHub API Error: ${error.message}`);
+      await handleGitHubApiError(branchesResponse);
     }
     
     const branches = await branchesResponse.json() as {name: string}[];
@@ -161,8 +160,7 @@ export async function fetchRepositoryFiles(
     const response = await fetch(apiUrl, { headers });
     
     if (!response.ok) {
-      const error: GitHubApiError = await response.json() as GitHubApiError;
-      throw new Error(`GitHub API Error: ${error.message}`);
+      await handleGitHubApiError(response);
     }
 
     console.log(`GitHub API response status: ${response.status}`);
@@ -247,8 +245,7 @@ async function fetchFileContent(
     console.log(`File content response status: ${response.status} for ${path}`);
     
     if (!response.ok) {
-      const error: GitHubApiError = await response.json() as GitHubApiError;
-      throw new Error(`GitHub API Error: ${error.message}`);
+      await handleGitHubApiError(response);
     }
 
     const data = await response.json() as GitHubFile;
@@ -280,21 +277,14 @@ async function processDirectory(
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
   console.log(`Processing directory at: ${apiUrl}`);
   
-  const headers: Record<string, string> = {
-    "Accept": "application/vnd.github.v3+json",
-  };
-  
-  if (process.env.GITHUB_TOKEN) {
-    headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
-  }
+  const headers = createGitHubHeaders();
 
   try {
     const response = await fetch(apiUrl, { headers });
     console.log(`Directory response status: ${response.status} for ${path}`);
     
     if (!response.ok) {
-      const error: GitHubApiError = await response.json() as GitHubApiError;
-      throw new Error(`GitHub API Error: ${error.message}`);
+      await handleGitHubApiError(response);
     }
 
     const data = await response.json() as GitHubFile[];

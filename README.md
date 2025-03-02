@@ -19,6 +19,8 @@ Before you get started, make sure you have the following:
 - Docker and Docker Compose installed on your machine
 - An OpenAI API key
 - A GitHub token (for repository access)
+  - For public repositories: A GitHub token with minimal permissions
+  - For private repositories: A GitHub token with `repo` scope permissions
 
 ## Getting Started
 

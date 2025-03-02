@@ -1,0 +1,12 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Add package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Add a default entry point
+CMD ["npm", "run", "dev"]

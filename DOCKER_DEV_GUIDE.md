@@ -1,0 +1,129 @@
+# Docker Development Guide for Documentation Chatbot
+
+This guide provides instructions for running the Documentation Chatbot application in a local Docker environment.
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- OpenAI API key
+- GitHub token
+
+## Quick Start
+
+```bash
+# Start the development environment
+./dev-docker.sh up
+
+# Or in detached mode
+./dev-docker.sh up-detached
+```
+
+## Available Services
+
+The development environment includes:
+
+- **Web Application** - Available at http://localhost:5000
+- **PostgreSQL Database** - Available at localhost:5432
+- **pgAdmin** - Database administration UI at http://localhost:8080
+  - Login: admin@docubot.local
+  - Password: admin
+
+## Environment Setup
+
+Before starting the development environment, make sure to set up your environment variables:
+
+```bash
+# Create a .env file or export variables directly
+export OPENAI_API_KEY=your-openai-api-key
+export GITHUB_TOKEN=your-github-token
+```
+
+## Command Reference
+
+The `dev-docker.sh` script provides easy commands for Docker operations:
+
+| Command | Description |
+|---------|-------------|
+| `./dev-docker.sh up` | Start development environment |
+| `./dev-docker.sh up-detached` | Start in detached mode |
+| `./dev-docker.sh down` | Stop development environment |
+| `./dev-docker.sh db-push` | Push schema changes to database |
+| `./dev-docker.sh db-studio` | Start Drizzle Studio |
+| `./dev-docker.sh logs` | Show container logs |
+| `./dev-docker.sh restart` | Restart all services |
+| `./dev-docker.sh shell` | Open shell in app container |
+
+## Development Workflow
+
+1. Start the development environment:
+   ```bash
+   ./dev-docker.sh up
+   ```
+
+2. Make changes to your code - the changes will be reflected immediately thanks to volume mounting and hot reloading.
+
+3. If you make changes to the database schema:
+   ```bash
+   ./dev-docker.sh db-push
+   ```
+
+4. To view and manage the database directly, use Drizzle Studio:
+   ```bash
+   ./dev-docker.sh db-studio
+   ```
+   Then access Drizzle Studio at http://localhost:4000
+
+5. When you're done, shut down the environment:
+   ```bash
+   ./dev-docker.sh down
+   ```
+
+## Container Structure
+
+- **app-dev**: Node.js application with hot reloading
+- **postgres**: PostgreSQL database
+- **pgadmin**: Database administration UI
+
+## Persisted Data
+
+The following data is persisted across container restarts:
+
+- **Database data**: Stored in the `postgres_data` volume
+- **Node modules**: Stored in the `node_modules` volume to avoid rebuilding
+
+## Troubleshooting
+
+### Database Connection Issues
+
+If you're having trouble connecting to the database:
+
+```bash
+# Check if the postgres container is running
+docker-compose -f docker-compose.dev.yml ps
+
+# Check postgres logs
+docker-compose -f docker-compose.dev.yml logs postgres
+
+# Reset database (will delete all data)
+docker-compose -f docker-compose.dev.yml down -v
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### Application Issues
+
+If the application isn't working correctly:
+
+```bash
+# Check application logs
+docker-compose -f docker-compose.dev.yml logs app-dev
+
+# Restart just the application container
+docker-compose -f docker-compose.dev.yml restart app-dev
+
+# Open a shell in the application container
+./dev-docker.sh shell
+```
+
+### Port Conflicts
+
+If you have port conflicts, edit `docker-compose.dev.yml` to change the port mappings before starting the services.

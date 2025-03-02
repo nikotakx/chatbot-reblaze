@@ -9,7 +9,16 @@ export interface SearchResult {
 
 // In-memory vector store for development purposes
 export class VectorStore {
+  private cachedChunks: DocumentationChunk[] | null = null;
+  
   constructor() {}
+  
+  // Clear the store (for reindexing or purging)
+  async clear(): Promise<void> {
+    console.log("VectorStore: Clearing cached chunks");
+    this.cachedChunks = null;
+    return Promise.resolve();
+  }
 
   // Find similar chunks to the query using cosine similarity
   async search(query: string, topK: number = 5): Promise<SearchResult[]> {

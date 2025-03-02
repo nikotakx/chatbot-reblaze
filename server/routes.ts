@@ -480,6 +480,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete chat message" });
     }
   });
+  
+  // Purge all documentation chunks and files (used for reindexing)
+  apiRouter.post("/admin/purge", async (_req: Request, res: Response) => {
+    try {
+      console.log("Purging all documentation data...");
+      
+      // First, get all chunks to delete them
+      const allChunks = await storage.getAllDocumentationChunks();
+      console.log(`Found ${allChunks.length} documentation chunks to purge`);
+      
+      // Delete all chunks
+      let deletedChunks = 0;
+      for (const chunk of allChunks) {
+        const success = await storage.deleteDocumentationChunk(chunk.id);
+        if (success) deletedChunks++;
+      }
+      
+      // Get all documentation files
+      const allFiles = await storage.getAllDocumentationFiles();
+      console.log(`Found ${allFiles.length} documentation files to purge`);
+      
+      // For each file, delete associated images first
+      let deletedImages = 0;
+      let deletedFiles = 0;
+      
+      for (const file of allFiles) {
+        // Delete associated images
+        const images = await storage.getDocumentationImagesByFileId(file.id);
+        for (const image of images) {
+          const success = await storage.deleteDocumentationImage(image.id);
+          if (success) deletedImages++;
+        }
+        
+        // Delete the file
+        const success = await storage.deleteDocumentationFile(file.id);
+        if (success) deletedFiles++;
+      }
+      
+      // Reset repository config last synced time
+      const config = await storage.getRepositoryConfig();
+      if (config) {
+        await storage.updateRepositoryConfig(config.id, {
+          ...config,
+          lastSynced: null
+        });
+      }
+      
+      // Clear the vector store in memory
+      await vectorStore.clear();
+      
+      // Broadcast update via WebSocket
+      broadcastMessage('repository', {
+        purged: true,
+        timestamp: new Date().toISOString(),
+        stats: {
+          deletedChunks,
+          deletedFiles,
+          deletedImages
+        }
+      });
+      
+      res.json({
+        success: true,
+        purged: {
+          chunks: deletedChunks,
+          files: deletedFiles,
+          images: deletedImages
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error purging documentation data:", error);
+      res.status(500).json({ 
+        error: "Failed to purge documentation data",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   app.use("/api", apiRouter);
 

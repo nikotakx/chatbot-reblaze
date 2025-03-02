@@ -11,8 +11,11 @@ RUN npm ci
 # Copy application code
 COPY . .
 
-# Build TypeScript code
-RUN npm run build
+# Make the build script executable
+RUN chmod +x docker-build.sh
+
+# Build using our custom script that handles architecture correctly
+RUN ./docker-build.sh
 
 # Expose port
 EXPOSE 5000

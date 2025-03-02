@@ -151,6 +151,43 @@ docker-compose -f docker-compose.dev.yml down -v
 ./dev-docker.sh up-detached
 ```
 
+#### WebSocket Connection Errors
+
+If you see errors like `connect ECONNREFUSED 172.24.0.2:443` or WebSocket errors related to Postgres:
+
+1. This typically happens when the application is trying to connect to Postgres via WebSockets instead of using the standard PostgreSQL protocol.
+
+2. Check your database connection configuration:
+
+```javascript
+// Ensure you're using a standard PostgreSQL connection
+// NOT a WebSocket connection - correct format:
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL 
+});
+
+// INCORRECT format (don't use this):
+const client = new Client({
+  webSocketEndpoint: 'wss://postgres/v2'
+});
+```
+
+3. For NeonDB users: Make sure you're using the standard PostgreSQL connection string, not the WebSocket endpoint:
+
+```
+// Use this format:
+DATABASE_URL=postgres://user:password@host:port/database
+
+// Not this format:
+DATABASE_URL=wss://host/v2
+```
+
+4. Restart the application after making these changes:
+
+```bash
+./dev-docker.sh restart app-dev
+```
+
 ### Application Issues
 
 If the application isn't working correctly:

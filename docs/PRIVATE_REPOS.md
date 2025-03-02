@@ -97,6 +97,29 @@ Never store your GitHub token:
    - Authenticated requests have higher rate limits (5,000 vs 60 requests per hour)
    - Consider implementing caching for repository content
 
+4. **Database Connection Errors**:
+   ```
+   Error: connect ECONNREFUSED 172.24.0.2:443
+   ```
+   - If using Docker, ensure the PostgreSQL database is properly configured in the `docker-compose.yml` file
+   - Check that database connection strings are using standard PostgreSQL format, not WebSocket URLs
+   - For NeonDB users: Make sure you're using the standard PostgreSQL connection string, not the WebSocket endpoint
+
+5. **WebSocket Errors with Postgres**:
+   ```
+   WebSocket Error: ECONNREFUSED
+   ```
+   - This occurs when the application is trying to connect to Postgres via WebSockets instead of using the standard PostgreSQL protocol
+   - Verify your database connection is using `pg` package with a standard connection string:
+     ```javascript
+     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+     ```
+   - Not the WebSocket format:
+     ```javascript
+     // Incorrect format:
+     const client = new Client({ webSocketEndpoint: 'wss://postgres/v2' });
+     ```
+
 ### Detailed Logs
 
 For more detailed troubleshooting, check the application logs:
@@ -108,6 +131,16 @@ For more detailed troubleshooting, check the application logs:
 # Direct shell access
 npm run dev
 ```
+
+### Database Configuration
+
+Make sure your `DATABASE_URL` environment variable follows the standard PostgreSQL connection format:
+
+```
+DATABASE_URL=postgres://username:password@hostname:port/database_name
+```
+
+If you're using Neon serverless PostgreSQL, get the connection string from your dashboard and ensure it's in the correct format for your environment.
 
 ## Related Documentation
 

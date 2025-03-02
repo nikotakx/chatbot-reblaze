@@ -116,3 +116,40 @@ To debug GitHub API issues, the application logs detailed information about API 
 ```
 
 Look for lines containing "GitHub API" for relevant debugging information.
+
+## Integration with Database
+
+When using GitHub API with database storage, be aware of the following considerations:
+
+### Database Connection Issues
+
+If you encounter database errors when accessing GitHub repositories:
+
+1. Check your database configuration in `server/db.ts`
+2. Ensure your `DATABASE_URL` is properly formatted:
+   - For standard PostgreSQL: `postgres://username:password@hostname:port/database`
+   - For Neon Serverless PostgreSQL: The URL might use a WebSocket format (`wss://`)
+
+### PostgreSQL with Neon
+
+The Documentation Chatbot supports Neon's serverless PostgreSQL, which uses WebSocket connections instead of standard PostgreSQL connections. When using Neon:
+
+1. Ensure the WebSocket connection is properly configured:
+   ```javascript
+   import { Pool, neonConfig } from '@neondatabase/serverless';
+   import ws from 'ws';
+   
+   // Set up WebSocket for Neon
+   neonConfig.webSocketConstructor = ws;
+   ```
+
+2. Use the correct connection URL format from your Neon dashboard
+3. For Docker environments, you may need special configuration to handle WebSocket connections
+
+### Local vs. Docker PostgreSQL Connections
+
+When running in Docker:
+
+1. Use the service name as the host (e.g., `postgres://postgres:postgres@postgres:5432/postgres`)
+2. Do not use `localhost` as the hostname inside Docker containers
+3. Ensure network connectivity between containers by checking network configuration in `docker-compose.yml`

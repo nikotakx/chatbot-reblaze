@@ -1,0 +1,142 @@
+12:05:14 PM [express] GET /api/admin/repository 500 in 16ms :: {"error":"Failed to fetch repository c…
+rbz-v5-docbot-app-dev-1   | Error fetching documentation files: ErrorEvent {
+rbz-v5-docbot-app-dev-1   |   [Symbol(kTarget)]: WebSocket {
+rbz-v5-docbot-app-dev-1   |     _events: [Object: null prototype] {
+rbz-v5-docbot-app-dev-1   |       error: [Function],
+rbz-v5-docbot-app-dev-1   |       message: [Function],
+rbz-v5-docbot-app-dev-1   |       close: [Function],
+rbz-v5-docbot-app-dev-1   |       open: [Function]
+rbz-v5-docbot-app-dev-1   |     },
+rbz-v5-docbot-app-dev-1   |     _eventsCount: 4,
+rbz-v5-docbot-app-dev-1   |     _maxListeners: undefined,
+rbz-v5-docbot-app-dev-1   |     _binaryType: 'arraybuffer',
+rbz-v5-docbot-app-dev-1   |     _closeCode: 1006,
+rbz-v5-docbot-app-dev-1   |     _closeFrameReceived: false,
+rbz-v5-docbot-app-dev-1   |     _closeFrameSent: false,
+rbz-v5-docbot-app-dev-1   |     _closeMessage: <Buffer >,
+rbz-v5-docbot-app-dev-1   |     _closeTimer: null,
+rbz-v5-docbot-app-dev-1   |     _errorEmitted: true,
+rbz-v5-docbot-app-dev-1   |     _extensions: {},
+rbz-v5-docbot-app-dev-1   |     _paused: false,
+rbz-v5-docbot-app-dev-1   |     _protocol: '',
+rbz-v5-docbot-app-dev-1   |     _readyState: 3,
+rbz-v5-docbot-app-dev-1   |     _receiver: null,
+rbz-v5-docbot-app-dev-1   |     _sender: null,
+rbz-v5-docbot-app-dev-1   |     _socket: null,
+rbz-v5-docbot-app-dev-1   |     _bufferedAmount: 0,
+rbz-v5-docbot-app-dev-1   |     _isServer: false,
+rbz-v5-docbot-app-dev-1   |     _redirects: 0,
+rbz-v5-docbot-app-dev-1   |     _autoPong: true,
+rbz-v5-docbot-app-dev-1   |     _url: 'wss://postgres/v2',
+rbz-v5-docbot-app-dev-1   |     _req: null,
+rbz-v5-docbot-app-dev-1   |     [Symbol(shapeMode)]: false,
+rbz-v5-docbot-app-dev-1   |     [Symbol(kCapture)]: false
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kType)]: 'error',
+rbz-v5-docbot-app-dev-1   |   [Symbol(kError)]: Error: connect ECONNREFUSED 172.24.0.2:443
+rbz-v5-docbot-app-dev-1   |       at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+rbz-v5-docbot-app-dev-1   |     errno: -111,
+rbz-v5-docbot-app-dev-1   |     code: 'ECONNREFUSED',
+rbz-v5-docbot-app-dev-1   |     syscall: 'connect',
+rbz-v5-docbot-app-dev-1   |     address: '172.24.0.2',
+rbz-v5-docbot-app-dev-1   |     port: 443
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kMessage)]: 'connect ECONNREFUSED 172.24.0.2:443'
+rbz-v5-docbot-app-dev-1   | }
+rbz-v5-docbot-app-dev-1   | 12:05:14 PM [express] GET /api/admin/documentation 500 in 20ms :: {"error":"Failed to fetch documenta…
+rbz-v5-docbot-app-dev-1   | Error fetching documentation stats: ErrorEvent {
+rbz-v5-docbot-app-dev-1   |   [Symbol(kTarget)]: WebSocket {
+rbz-v5-docbot-app-dev-1   |     _events: [Object: null prototype] {
+rbz-v5-docbot-app-dev-1   |       error: [Function],
+rbz-v5-docbot-app-dev-1   |       message: [Function],
+rbz-v5-docbot-app-dev-1   |       close: [Function],
+rbz-v5-docbot-app-dev-1   |       open: [Function]
+rbz-v5-docbot-app-dev-1   |     },
+rbz-v5-docbot-app-dev-1   |     _eventsCount: 4,
+rbz-v5-docbot-app-dev-1   |     _maxListeners: undefined,
+rbz-v5-docbot-app-dev-1   |     _binaryType: 'arraybuffer',
+rbz-v5-docbot-app-dev-1   |     _closeCode: 1006,
+rbz-v5-docbot-app-dev-1   |     _closeFrameReceived: false,
+rbz-v5-docbot-app-dev-1   |     _closeFrameSent: false,
+rbz-v5-docbot-app-dev-1   |     _closeMessage: <Buffer >,
+rbz-v5-docbot-app-dev-1   |     _closeTimer: null,
+rbz-v5-docbot-app-dev-1   |     _errorEmitted: true,
+rbz-v5-docbot-app-dev-1   |     _extensions: {},
+rbz-v5-docbot-app-dev-1   |     _paused: false,
+rbz-v5-docbot-app-dev-1   |     _protocol: '',
+rbz-v5-docbot-app-dev-1   |     _readyState: 3,
+rbz-v5-docbot-app-dev-1   |     _receiver: null,
+rbz-v5-docbot-app-dev-1   |     _sender: null,
+rbz-v5-docbot-app-dev-1   |     _socket: null,
+rbz-v5-docbot-app-dev-1   |     _bufferedAmount: 0,
+rbz-v5-docbot-app-dev-1   |     _isServer: false,
+rbz-v5-docbot-app-dev-1   |     _redirects: 0,
+rbz-v5-docbot-app-dev-1   |     _autoPong: true,
+rbz-v5-docbot-app-dev-1   |     _url: 'wss://postgres/v2',
+rbz-v5-docbot-app-dev-1   |     _req: null,
+rbz-v5-docbot-app-dev-1   |     [Symbol(shapeMode)]: false,
+rbz-v5-docbot-app-dev-1   |     [Symbol(kCapture)]: false
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kType)]: 'error',
+rbz-v5-docbot-app-dev-1   |   [Symbol(kError)]: Error: connect ECONNREFUSED 172.24.0.2:443
+rbz-v5-docbot-app-dev-1   |       at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+rbz-v5-docbot-app-dev-1   |     errno: -111,
+rbz-v5-docbot-app-dev-1   |     code: 'ECONNREFUSED',
+rbz-v5-docbot-app-dev-1   |     syscall: 'connect',
+rbz-v5-docbot-app-dev-1   |     address: '172.24.0.2',
+rbz-v5-docbot-app-dev-1   |     port: 443
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kMessage)]: 'connect ECONNREFUSED 172.24.0.2:443'
+rbz-v5-docbot-app-dev-1   | }
+rbz-v5-docbot-app-dev-1   | 12:05:14 PM [express] GET /api/admin/stats 500 in 20ms :: {"error":"Failed to fetch documentation sta…
+rbz-v5-docbot-app-dev-1   | Error updating repository config: ErrorEvent {
+rbz-v5-docbot-app-dev-1   |   [Symbol(kTarget)]: WebSocket {
+rbz-v5-docbot-app-dev-1   |     _events: [Object: null prototype] {
+rbz-v5-docbot-app-dev-1   |       error: [Function],
+rbz-v5-docbot-app-dev-1   |       message: [Function],
+rbz-v5-docbot-app-dev-1   |       close: [Function],
+rbz-v5-docbot-app-dev-1   |       open: [Function]
+rbz-v5-docbot-app-dev-1   |     },
+rbz-v5-docbot-app-dev-1   |     _eventsCount: 4,
+rbz-v5-docbot-app-dev-1   |     _maxListeners: undefined,
+rbz-v5-docbot-app-dev-1   |     _binaryType: 'arraybuffer',
+rbz-v5-docbot-app-dev-1   |     _closeCode: 1006,
+rbz-v5-docbot-app-dev-1   |     _closeFrameReceived: false,
+rbz-v5-docbot-app-dev-1   |     _closeFrameSent: false,
+rbz-v5-docbot-app-dev-1   |     _closeMessage: <Buffer >,
+rbz-v5-docbot-app-dev-1   |     _closeTimer: null,
+rbz-v5-docbot-app-dev-1   |     _errorEmitted: true,
+rbz-v5-docbot-app-dev-1   |     _extensions: {},
+rbz-v5-docbot-app-dev-1   |     _paused: false,
+rbz-v5-docbot-app-dev-1   |     _protocol: '',
+rbz-v5-docbot-app-dev-1   |     _readyState: 3,
+rbz-v5-docbot-app-dev-1   |     _receiver: null,
+rbz-v5-docbot-app-dev-1   |     _sender: null,
+rbz-v5-docbot-app-dev-1   |     _socket: null,
+rbz-v5-docbot-app-dev-1   |     _bufferedAmount: 0,
+rbz-v5-docbot-app-dev-1   |     _isServer: false,
+rbz-v5-docbot-app-dev-1   |     _redirects: 0,
+rbz-v5-docbot-app-dev-1   |     _autoPong: true,
+rbz-v5-docbot-app-dev-1   |     _url: 'wss://postgres/v2',
+rbz-v5-docbot-app-dev-1   |     _req: null,
+rbz-v5-docbot-app-dev-1   |     [Symbol(shapeMode)]: false,
+rbz-v5-docbot-app-dev-1   |     [Symbol(kCapture)]: false
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kType)]: 'error',
+rbz-v5-docbot-app-dev-1   |   [Symbol(kError)]: Error: connect ECONNREFUSED 172.24.0.2:443
+rbz-v5-docbot-app-dev-1   |       at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+rbz-v5-docbot-app-dev-1   |     errno: -111,
+rbz-v5-docbot-app-dev-1   |     code: 'ECONNREFUSED',
+rbz-v5-docbot-app-dev-1   |     syscall: 'connect',
+rbz-v5-docbot-app-dev-1   |     address: '172.24.0.2',
+rbz-v5-docbot-app-dev-1   |     port: 443
+rbz-v5-docbot-app-dev-1   |   },
+rbz-v5-docbot-app-dev-1   |   [Symbol(kMessage)]: 'connect ECONNREFUSED 172.24.0.2:443'
+rbz-v5-docbot-app-dev-1   | }
+rbz-v5-docbot-app-dev-1   | 12:05:17 PM [express] POST /api/admin/repository 500 in 15ms :: {"error":"Failed to update repository…
+rbz-v5-docbot-app-dev-1   | Broadcasting heartbeat to 2 connected clients. Stats: Sent=26, Received=5
+rbz-v5-docbot-app-dev-1   | Broadcasting heartbeat to 2 connected clients. Stats: Sent=28, Received=5
+rbz-v5-docbot-app-dev-1   | Broadcasting heartbeat to 2 connected clients. Stats: Sent=30, Received=5
+rbz-v5-docbot-app-dev-1   | WebSocket message received from 172.24.0.1: { type: 'echo', data: { ping: 1740917141078 } }
+rbz-v5-docbot-app-dev-1   | Broadcasting heartbeat to 2 connected clients. Stats: Sent=33, Received=6
+rbz-v5-docbot-app-dev-1   | WebSocket message received from 172.24.0.1: { type: 'echo', data: { ping: 1740917155080 } }

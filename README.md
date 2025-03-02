@@ -87,7 +87,37 @@ Run the automated tests:
 npm test
 ```
 
+## Private Repository Support
+
+This application fully supports both public and private GitHub repositories. To use private repositories:
+
+1. Generate a GitHub personal access token with the `repo` scope:
+   - Go to your GitHub account settings
+   - Navigate to "Developer Settings" > "Personal Access Tokens" > "Tokens (classic)"
+   - Create a new token with at least the "repo" scope
+   - Copy the generated token
+
+2. Add the token to your `.env` file:
+   ```
+   GITHUB_TOKEN=your_github_personal_access_token
+   ```
+
+3. When adding a repository in the admin panel, you can now enter the private repository URL:
+   - Format: `https://github.com/username/private-repo`
+   - Or simply: `username/private-repo`
+
+The application will automatically authenticate API requests using your token, allowing it to access and index your private repository content.
+
 ## Troubleshooting
+
+### GitHub API Authentication Issues
+
+If you encounter authentication errors when accessing GitHub repositories:
+
+1. Verify that your GitHub token has the correct permissions (needs `repo` scope for private repositories)
+2. Check that the token is correctly set in your environment variables
+3. Ensure the repository URL is correctly formatted
+4. Confirm that your GitHub account has access to the specified repository
 
 ### Exec Format Error with esbuild
 

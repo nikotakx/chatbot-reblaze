@@ -48,6 +48,34 @@ For accessing private GitHub repositories, you **must** provide a valid GitHub t
    export GITHUB_TOKEN=your-github-token
    ```
 
+### Token Security Considerations
+
+When working with GitHub tokens, follow these security best practices:
+
+1. **Set appropriate scopes**: Only grant the minimal permissions needed
+   - Use `public_repo` for public repositories only
+   - Use `repo` for private repositories
+
+2. **Set expiration dates**: Choose a reasonable expiration date for your token
+
+3. **Environment variables**: Store tokens as environment variables instead of hardcoding them
+   ```bash
+   # Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
+   export GITHUB_TOKEN=your-token-here
+   ```
+
+4. **Docker Compose**: Pass tokens securely through environment variables
+   ```yaml
+   services:
+     app:
+       environment:
+         - GITHUB_TOKEN=${GITHUB_TOKEN}
+   ```
+
+5. **Never commit tokens**: Add `.env` files to your `.gitignore` to prevent accidentally committing secrets
+
+6. **Rotate tokens**: Regularly generate new tokens and revoke old ones
+
 ## Command Reference
 
 The `dev-docker.sh` script provides easy commands for Docker operations:

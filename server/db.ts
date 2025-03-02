@@ -3,13 +3,17 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
-// Configure Neon for WebSockets - required for serverless environments
+// Configure Neon for WebSockets - only if we're using a Neon database
 // This may cause issues in some Docker environments - see error handling below
-try {
-  neonConfig.webSocketConstructor = ws;
-  console.log("Configured Neon with WebSocket support");
-} catch (err) {
-  console.warn("Failed to configure Neon WebSocket:", err);
+const isNeonDatabase = process.env.DATABASE_URL?.includes('neon.tech');
+
+if (isNeonDatabase) {
+  try {
+    neonConfig.webSocketConstructor = ws;
+    console.log("Configured Neon with WebSocket support");
+  } catch (err) {
+    console.warn("Failed to configure Neon WebSocket:", err);
+  }
 }
 
 if (!process.env.DATABASE_URL) {
@@ -17,17 +21,6 @@ if (!process.env.DATABASE_URL) {
     "DATABASE_URL must be set. Did you forget to provision a database?",
   );
 }
-
-// Validate DATABASE_URL format to catch potential configuration errors
-const dbUrl = process.env.DATABASE_URL;
-if (dbUrl.startsWith('wss://') && !dbUrl.includes('neon.tech')) {
-  console.error("ERROR: Invalid database URL format. Using WebSocket URL for non-Neon database.");
-  console.error("For standard PostgreSQL in Docker, use format: postgres://user:password@host:port/database");
-  throw new Error("Invalid DATABASE_URL format. See logs for details.");
-}
-
-// Log connection info without credentials
-console.log(`Connecting to database: ${dbUrl.substring(0, dbUrl.indexOf('://')+3)}[credentials-hidden]`);
 
 // Create connection pool with improved configuration
 const poolConfig = { 
@@ -43,9 +36,10 @@ export const pool = new Pool(poolConfig);
 // Add error handler
 pool.on('error', (err) => {
   console.error('Unexpected error on idle database client', err);
+  process.exit(1); // Exit on critical database errors
 });
 
 // Initialize Drizzle ORM with the pool
 export const db = drizzle({ client: pool, schema });
 
-console.log("Database connection established");
+console.log(`Database connection established using ${isNeonDatabase ? 'Neon' : 'standard PostgreSQL'}`);

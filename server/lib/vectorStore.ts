@@ -20,8 +20,8 @@ export class VectorStore {
     return Promise.resolve();
   }
 
-  // Find similar chunks to the query using cosine similarity
-  async search(query: string, topK: number = 5): Promise<SearchResult[]> {
+  // Find similar chunks to the query using enhanced cosine similarity search
+  async search(query: string, topK: number = 7): Promise<SearchResult[]> {
     try {
       // Get all chunks from storage (or use cached chunks if available)
       let chunks;
@@ -44,11 +44,16 @@ export class VectorStore {
       console.log(`VectorStore.search: Creating embedding for query: "${query}"`);
       const queryEmbedding = await createEmbedding(query);
 
+      // Define a minimum similarity threshold for inclusion
+      // This helps filter out irrelevant chunks entirely
+      const MIN_SIMILARITY_THRESHOLD = 0.65;
+
       // For each chunk, calculate cosine similarity
       const results: SearchResult[] = [];
       let validEmbeddingCount = 0;
       let parseErrorCount = 0;
       let emptyEmbeddingCount = 0;
+      let belowThresholdCount = 0;
 
       for (const chunk of chunks) {
         let chunkEmbedding: number[];
@@ -68,10 +73,15 @@ export class VectorStore {
           // Calculate cosine similarity
           const similarity = cosineSimilarity(queryEmbedding, chunkEmbedding);
           
-          results.push({
-            chunk,
-            similarity
-          });
+          // Only include chunks that meet the minimum similarity threshold
+          if (similarity >= MIN_SIMILARITY_THRESHOLD) {
+            results.push({
+              chunk,
+              similarity
+            });
+          } else {
+            belowThresholdCount++;
+          }
         } catch (e) {
           parseErrorCount++;
           console.warn(`Failed to parse embedding for chunk ${chunk.id}`);
@@ -82,14 +92,55 @@ export class VectorStore {
       console.log(`VectorStore.search: Statistics - ` +
         `Valid Embeddings: ${validEmbeddingCount}, ` + 
         `Parse Errors: ${parseErrorCount}, ` +
-        `Empty Embeddings: ${emptyEmbeddingCount}`);
+        `Empty Embeddings: ${emptyEmbeddingCount}, ` +
+        `Below Threshold: ${belowThresholdCount}`);
 
       // Sort by similarity (descending) and take top K
       const sortedResults = results
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, topK);
       
-      console.log(`VectorStore.search: Found ${sortedResults.length} relevant results`);
+      console.log(`VectorStore.search: Found ${sortedResults.length} relevant results with similarity >= ${MIN_SIMILARITY_THRESHOLD}`);
+      
+      // If we have fewer than half the requested results, lower the threshold and try again
+      if (sortedResults.length < Math.ceil(topK / 2) && belowThresholdCount > 0) {
+        console.log("VectorStore.search: Too few results, lowering threshold and trying again");
+        
+        // Second pass with lower threshold
+        const FALLBACK_THRESHOLD = 0.5;
+        const additionalResults: SearchResult[] = [];
+        
+        for (const chunk of chunks) {
+          try {
+            const chunkEmbedding = chunk.embedding ? JSON.parse(chunk.embedding) : [];
+            
+            if (!chunkEmbedding || chunkEmbedding.length === 0) continue;
+            
+            const similarity = cosineSimilarity(queryEmbedding, chunkEmbedding);
+            
+            // Only look at chunks that were previously below threshold but above fallback
+            if (similarity >= FALLBACK_THRESHOLD && similarity < MIN_SIMILARITY_THRESHOLD) {
+              additionalResults.push({
+                chunk,
+                similarity
+              });
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        // Sort additional results and combine with existing ones
+        const additionalSorted = additionalResults
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, topK - sortedResults.length);
+          
+        console.log(`VectorStore.search: Found ${additionalSorted.length} additional results with fallback threshold`);
+        
+        // Combine the results
+        sortedResults.push(...additionalSorted);
+        sortedResults.sort((a, b) => b.similarity - a.similarity);
+      }
       
       return sortedResults;
     } catch (error) {

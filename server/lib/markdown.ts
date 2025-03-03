@@ -233,14 +233,18 @@ function splitIntoSections(content: string): Section[] {
     }];
   }
   
-  // Process sections based on size - using larger chunks
+  // Process sections based on size - using larger chunks with improved context
   const processedSections: Section[] = [];
-  const MIN_SECTION_SIZE = 800; // Increased minimum characters for a section
-  const MAX_SECTION_SIZE = 10000; // Increased maximum characters before splitting
   
-  // First pass: group sections by top-level heading to maintain context
+  // Enhanced parameters for section processing
+  const MIN_SECTION_SIZE = 1000; // Increased minimum characters for a section
+  const MAX_SECTION_SIZE = 12000; // Increased maximum characters before splitting
+  const MIN_PARAGRAPHS_IN_SECTION = 2; // Ensure at least two paragraphs per section when possible
+  
+  // First pass: group sections by top-level heading to maintain better context
   let currentTopSection: Section | null = null;
   let currentTopSectionContent = "";
+  let paragraphsInCurrentSection = 0;
   
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
@@ -249,10 +253,14 @@ function splitIntoSections(content: string): Section[] {
     const isTopLevel = section.level !== undefined && section.level <= 2;
     
     if (isTopLevel) {
-      // If we have a previous top section, add it to processed sections
+      // If we have a previous top section, process it
       if (currentTopSection && currentTopSectionContent.length > 0) {
-        // Only split if it's extremely large
-        if (currentTopSectionContent.length > MAX_SECTION_SIZE * 2) {
+        // Check paragraph count in current section
+        const paragraphCount = currentTopSectionContent.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+        
+        // Only split if it's extremely large or has many paragraphs (which provides enough context)
+        if (currentTopSectionContent.length > MAX_SECTION_SIZE || paragraphCount > 10) {
+          // Use our enhanced paragraph splitting function to maintain context
           const paragraphs = splitByParagraphs(currentTopSectionContent);
           for (const paragraph of paragraphs) {
             if (paragraph.length > 0) {
@@ -264,6 +272,7 @@ function splitIntoSections(content: string): Section[] {
             }
           }
         } else {
+          // Keep the section intact to maintain better context
           processedSections.push({
             heading: currentTopSection.heading,
             level: currentTopSection.level,
@@ -275,20 +284,58 @@ function splitIntoSections(content: string): Section[] {
       // Start a new top section
       currentTopSection = section;
       currentTopSectionContent = section.content;
+      paragraphsInCurrentSection = currentTopSectionContent.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
     } else {
       // This is a sub-section, add it to the current top section if we have one
       if (currentTopSection) {
-        currentTopSectionContent += "\n" + section.content;
+        const contentToAdd = "\n" + section.content;
+        const additionalParagraphs = contentToAdd.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+        
+        // Always add if we don't have minimum paragraphs yet or section is small enough
+        if (
+          paragraphsInCurrentSection < MIN_PARAGRAPHS_IN_SECTION || 
+          currentTopSectionContent.length + contentToAdd.length <= MAX_SECTION_SIZE
+        ) {
+          currentTopSectionContent += contentToAdd;
+          paragraphsInCurrentSection += additionalParagraphs;
+        } 
+        // If adding would make the section too large, process current and start a new one
+        else if (currentTopSectionContent.length + contentToAdd.length > MAX_SECTION_SIZE) {
+          // Process current section
+          processedSections.push({
+            heading: currentTopSection.heading,
+            level: currentTopSection.level,
+            content: currentTopSectionContent,
+          });
+          
+          // Start a new section with the same heading but new content
+          currentTopSectionContent = section.content;
+          paragraphsInCurrentSection = currentTopSectionContent.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+        }
       } else {
-        // No parent section, add as standalone
-        processedSections.push(section);
+        // No parent section, check if this is a substantial subsection
+        const contentLength = section.content.length;
+        const paragraphCount = section.content.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+        
+        // Ensure it has enough content or paragraphs
+        if (contentLength >= MIN_SECTION_SIZE || paragraphCount >= MIN_PARAGRAPHS_IN_SECTION) {
+          processedSections.push(section);
+        } else {
+          // For small subsections without parent, mark for potential combining later
+          (section as any)._shouldCombine = true;
+          processedSections.push(section);
+        }
       }
     }
   }
   
   // Add the last top section if any
   if (currentTopSection && currentTopSectionContent.length > 0) {
-    if (currentTopSectionContent.length > MAX_SECTION_SIZE * 2) {
+    const paragraphCount = currentTopSectionContent.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+    
+    // Only split if it's extremely large
+    if (currentTopSectionContent.length > MAX_SECTION_SIZE || paragraphCount > 10) {
+      // Use our enhanced paragraph splitting function to maintain context
       const paragraphs = splitByParagraphs(currentTopSectionContent);
       for (const paragraph of paragraphs) {
         if (paragraph.length > 0) {
@@ -300,6 +347,7 @@ function splitIntoSections(content: string): Section[] {
         }
       }
     } else {
+      // Keep the section intact for better context
       processedSections.push({
         heading: currentTopSection.heading,
         level: currentTopSection.level,

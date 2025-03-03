@@ -16,6 +16,7 @@ IMPORTANT: The documentation is provided as chunks from markdown files. Each chu
 - These chunks may contain full sections of documentation INCLUDING the section headings
 - Some chunks will start with markdown headings (e.g. "# Dynamic Rules") - these are ACTUAL CONTENT, not just labels
 - Read ALL the content provided in these chunks, including headings and code examples
+- Each chunk contains at least two paragraphs when possible to provide better context
 
 If the provided documentation chunks contain the heading or section names that match the query but no detailed content, say "I found information about [topic] but the documentation doesn't provide detailed information about it."
 
@@ -30,6 +31,8 @@ Important instructions:
 4. Format your responses with Markdown for readability.
 5. For questions about features or functionality, explain how they work and provide context.
 6. Mention the specific filename (without the full path) where you found the information.
+7. Use the multi-paragraph context provided in each chunk to give more complete answers.
+8. If related information appears across different chunks, synthesize it into a coherent answer.
 `;
 
 export interface RelevantDocumentationChunk {
@@ -114,12 +117,14 @@ Please answer the question based ONLY on this documentation. If the documentatio
     console.log(`OpenAI System Prompt (${SYSTEM_PROMPT.length} chars): ${SYSTEM_PROMPT.substring(0, 100)}...`);
     console.log(`OpenAI User Message Preview (first 200 chars): ${userMessage.substring(0, 200)}...`);
     
-    // Call OpenAI API
+    // Call OpenAI API with enhanced parameters
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
       messages: messages as any,
-      temperature: 0.5,
-      max_tokens: 1000,
+      temperature: 0.4, // Slightly reduced temperature for more focused responses
+      max_tokens: 1500, // Increased token limit for more comprehensive answers
+      presence_penalty: 0.1, // Slight penalty to prevent repetition
+      frequency_penalty: 0.1, // Slight penalty to encourage diverse language
     });
 
     // Log the response for debugging

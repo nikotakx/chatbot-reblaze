@@ -53,7 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Search for relevant documentation
-      const searchResults = await vectorStore.search(message, 5);
+      // Increased from 5 to 7 results to provide better context with our improved chunking
+      const searchResults = await vectorStore.search(message, 7);
       
       // Generate response from OpenAI
       const aiResponse = await chatWithDocumentation(

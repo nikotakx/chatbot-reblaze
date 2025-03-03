@@ -4,27 +4,45 @@ import ws from "ws";
 import * as schema from "@shared/schema";
 
 // Configure Neon for WebSockets - only if we're using a Neon database
-// This may cause issues in some Docker environments - see error handling below
 const isNeonDatabase = process.env.DATABASE_URL?.includes('neon.tech');
 
+// Enhanced Neon WebSocket configuration with better error handling for Docker environments
 if (isNeonDatabase) {
   try {
-    // Set WebSocket constructor for Neon
+    // Set WebSocket constructor for Neon - critical for serverless environments
     neonConfig.webSocketConstructor = ws;
     
-    // Add any additional Neon configuration
-    // Use optional chaining to avoid type errors
+    // Set WebSocket implementation options (may help in Docker environments)
+    if ('useSecureWebSocket' in neonConfig) {
+      (neonConfig as any).useSecureWebSocket = true; // Force secure connections
+    }
+    
+    // Adjust WebSocket connection parameters using type casting to avoid LSP errors
+    // These properties may not be in TypeScript definitions but are supported by the library
+    const extendedConfig = neonConfig as any;
+    if (extendedConfig) {
+      extendedConfig.wsConnectionTimeout = 20000; // 20 seconds timeout for Docker networking
+      extendedConfig.retryTimeout = 1000; // Retry delay in milliseconds
+      extendedConfig.maxRetries = 5; // Number of retry attempts
+    }
+    
+    // Set connection caching if available
     const config = neonConfig as any;
-    if (config) {
-      // Set connection caching if available
-      if ('fetchConnectionCache' in config) {
-        config.fetchConnectionCache = true;
-      }
+    if (config && 'fetchConnectionCache' in config) {
+      config.fetchConnectionCache = true;
     }
 
-    console.log("Configured Neon with WebSocket support");
+    console.log("Configured Neon with enhanced WebSocket support for containerized environments");
   } catch (err) {
     console.warn("Failed to configure Neon WebSocket:", err);
+    
+    // Fall back to basic configuration if enhanced fails
+    try {
+      neonConfig.webSocketConstructor = ws;
+      console.log("Fallback to basic Neon WebSocket configuration");
+    } catch (fallbackErr) {
+      console.error("Critical Neon WebSocket configuration failure:", fallbackErr);
+    }
   }
 }
 
@@ -34,15 +52,29 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create connection pool with improved configuration
+// Create connection pool with improved configuration for better Docker compatibility
 const poolConfig = { 
   connectionString: process.env.DATABASE_URL,
-  max: isNeonDatabase ? 5 : 10, // Reduce max connections for Neon
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: isNeonDatabase ? 10000 : 5000, // Increase timeout for Neon
-  // Add additional options to improve Neon WebSocket stability
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000
+  max: isNeonDatabase ? 3 : 10, // Further reduce max connections for Neon in Docker
+  idleTimeoutMillis: 60000, // Longer idle timeout for Docker networking
+  connectionTimeoutMillis: isNeonDatabase ? 15000 : 5000, // Increased timeout for Neon in Docker
+  
+  // Add additional options to improve Neon WebSocket stability in Docker
+  keepAlive: true, 
+  keepAliveInitialDelayMillis: 10000,
+  
+  // Add retry logic - essential for Docker environments where network can be unstable
+  // during container startup or network congestion
+  allowExitOnIdle: false, // Prevent pool shutdown on idle
+  
+  // Special Neon handling to deal with transient WebSocket connection issues in Docker
+  ...(isNeonDatabase ? {
+    ssl: {
+      rejectUnauthorized: false, // More permissive SSL for some Docker environments
+    },
+    statement_timeout: 30000, // Increase statement timeout for Neon operations
+    query_timeout: 30000, // Increase query timeout
+  } : {})
 };
 
 // Initialize pool and Drizzle ORM

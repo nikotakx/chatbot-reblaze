@@ -79,8 +79,11 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [repoUrl, setRepoUrl] = useState("");
-  const [branch, setBranch] = useState("v2.x");
+  const [branch, setBranch] = useState("main"); // Default to main instead of hardcoded v2.x
   const [searchQuery, setSearchQuery] = useState("");
+  // Add state for custom branch input
+  const [isCustomBranch, setIsCustomBranch] = useState(false);
+  const [customBranch, setCustomBranch] = useState("");
   const [selectedFile, setSelectedFile] = useState<DocumentationFile | null>(
     null,
   );
@@ -415,26 +418,82 @@ export default function AdminPanel({ className = "" }: AdminPanelProps) {
                   >
                     Branch
                   </label>
-                  <Select
-                    value={branch}
-                    onValueChange={setBranch}
-                    disabled={
-                      configMutation.isPending || refreshMutation.isPending
-                    }
-                  >
-                    <SelectTrigger id="branchName">
-                      <SelectValue placeholder="Select a branch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="main">main</SelectItem>
-                      <SelectItem value="master">master</SelectItem>
-                      <SelectItem value="develop">develop</SelectItem>
-                      <SelectItem value="staging">staging</SelectItem>
-                      <SelectItem value="v2.x">v2.x</SelectItem>
-                      <SelectItem value="v3.x">v3.x</SelectItem>
-                      <SelectItem value="docs">docs</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  {!isCustomBranch ? (
+                    <div className="space-y-2">
+                      <Select
+                        value={branch}
+                        onValueChange={setBranch}
+                        disabled={
+                          configMutation.isPending || refreshMutation.isPending
+                        }
+                      >
+                        <SelectTrigger id="branchName">
+                          <SelectValue placeholder="Select a branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="main">main</SelectItem>
+                          <SelectItem value="master">master</SelectItem>
+                          <SelectItem value="develop">develop</SelectItem>
+                          <SelectItem value="custom">Custom branch...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      {branch === "custom" && (
+                        <Input 
+                          type="text"
+                          placeholder="Enter custom branch name"
+                          value={customBranch}
+                          onChange={(e) => {
+                            setCustomBranch(e.target.value);
+                            if (e.target.value) {
+                              setBranch(e.target.value);
+                            }
+                          }}
+                          disabled={configMutation.isPending || refreshMutation.isPending}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Input
+                        type="text"
+                        id="customBranch"
+                        value={customBranch}
+                        onChange={(e) => {
+                          setCustomBranch(e.target.value);
+                          setBranch(e.target.value);
+                        }}
+                        placeholder="Enter branch name"
+                        disabled={configMutation.isPending || refreshMutation.isPending}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setIsCustomBranch(false);
+                          setBranch("main");
+                        }}
+                        disabled={configMutation.isPending || refreshMutation.isPending}
+                      >
+                        Use common branch
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!isCustomBranch && branch !== "custom" && (
+                    <Button
+                      variant="link"
+                      className="text-xs p-0 h-auto mt-1"
+                      onClick={() => {
+                        setIsCustomBranch(true);
+                        setCustomBranch(branch);
+                      }}
+                      disabled={configMutation.isPending || refreshMutation.isPending}
+                    >
+                      Use custom branch name
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-3">

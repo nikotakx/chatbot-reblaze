@@ -98,6 +98,7 @@ function parseGitHubUrl(repoUrl: string): { owner: string, repo: string } {
 
 /**
  * Retrieve available branches and find the best matching one
+ * Returns the best branch to use, with improved branch finding logic
  */
 async function findBestBranch(owner: string, repo: string, requestedBranch: string): Promise<string> {
   const headers = createGitHubHeaders();
@@ -114,18 +115,41 @@ async function findBestBranch(owner: string, repo: string, requestedBranch: stri
   const branchNames = branches.map(b => b.name);
   console.log(`Available branches: ${branchNames.join(', ')}`);
   
-  // Check if requested branch exists
+  // Check if requested branch exists (exact match)
   if (branchNames.includes(requestedBranch)) {
+    console.log(`Found exact branch match: '${requestedBranch}'`);
     return requestedBranch;
   }
   
-  console.log(`Branch '${requestedBranch}' not found.`);
+  console.log(`Branch '${requestedBranch}' not found. Trying similar branches...`);
+  
+  // Try to find a branch that's similar to the requested branch (case insensitive)
+  const lowerRequestedBranch = requestedBranch.toLowerCase();
+  const similarBranch = branchNames.find(
+    b => b.toLowerCase() === lowerRequestedBranch
+  );
+  
+  if (similarBranch) {
+    console.log(`Found similar branch: '${similarBranch}' (case-insensitive match)`);
+    return similarBranch;
+  }
+  
+  // Try to find a partial match
+  const partialMatches = branchNames.filter(
+    b => b.toLowerCase().includes(lowerRequestedBranch) || 
+         lowerRequestedBranch.includes(b.toLowerCase())
+  );
+  
+  if (partialMatches.length > 0) {
+    console.log(`Found partial match branch: '${partialMatches[0]}'`);
+    return partialMatches[0];
+  }
   
   // Try common branch names
-  const commonBranches = ['main', 'master', 'v2.x', 'develop'];
+  const commonBranches = ['main', 'master', 'develop', 'staging', 'production', 'v2', 'v2.x', 'latest'];
   for (const commonBranch of commonBranches) {
     if (commonBranch !== requestedBranch && branchNames.includes(commonBranch)) {
-      console.log(`Using '${commonBranch}' branch instead.`);
+      console.log(`Using common branch '${commonBranch}' instead.`);
       return commonBranch;
     }
   }
@@ -244,10 +268,12 @@ function extractImageReferences(content: string, filePath: string): Array<{ url:
 
 /**
  * Main function to fetch repository files
+ * @param repoUrl The GitHub repository URL or owner/repo format
+ * @param branch The branch to fetch files from (defaults to main)
  */
 export async function fetchRepositoryFiles(
   repoUrl: string,
-  branch: string = "master"
+  branch: string = "main"
 ): Promise<GitHubRepoContent> {
   console.log(`Fetching files from repository: ${repoUrl}, branch: ${branch}`);
   

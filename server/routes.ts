@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse GitHub URL if it's in the format https://github.com/owner/repo
       let repoUrl = url;
-      let repoBranch = branch || 'master'; // Default to master if branch not specified
+      let repoBranch = branch || 'main'; // Default to main if branch not specified
       
       if (url.includes('github.com')) {
         // Extract owner and repo from URL

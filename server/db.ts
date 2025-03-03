@@ -9,7 +9,19 @@ const isNeonDatabase = process.env.DATABASE_URL?.includes('neon.tech');
 
 if (isNeonDatabase) {
   try {
+    // Set WebSocket constructor for Neon
     neonConfig.webSocketConstructor = ws;
+    
+    // Add any additional Neon configuration
+    // Use optional chaining to avoid type errors
+    const config = neonConfig as any;
+    if (config) {
+      // Set connection caching if available
+      if ('fetchConnectionCache' in config) {
+        config.fetchConnectionCache = true;
+      }
+    }
+
     console.log("Configured Neon with WebSocket support");
   } catch (err) {
     console.warn("Failed to configure Neon WebSocket:", err);
@@ -25,9 +37,12 @@ if (!process.env.DATABASE_URL) {
 // Create connection pool with improved configuration
 const poolConfig = { 
   connectionString: process.env.DATABASE_URL,
-  max: 10,
+  max: isNeonDatabase ? 5 : 10, // Reduce max connections for Neon
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
+  connectionTimeoutMillis: isNeonDatabase ? 10000 : 5000, // Increase timeout for Neon
+  // Add additional options to improve Neon WebSocket stability
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000
 };
 
 // Initialize pool and Drizzle ORM

@@ -370,11 +370,19 @@ function splitByParagraphs(content: string): string[] {
   // Combine paragraphs to create meaningful chunks
   const result: string[] = [];
   let currentChunk = "";
-  const MIN_CHUNK_SIZE = 500; // Increased minimum characters for a standalone chunk
-  const MAX_CHUNK_SIZE = 12000; // Increased maximum characters for a chunk
   
-  // Group paragraphs into larger semantic chunks
-  // This ensures we're maintaining more context by having larger chunks with multiple paragraphs
+  // ENHANCED PARAMETERS:
+  // Increased minimum characters for a chunk to encourage grouping more paragraphs
+  const MIN_CHUNK_SIZE = 800; 
+  // Minimum paragraphs per chunk - ensure at least two paragraphs per chunk when possible
+  const MIN_PARAGRAPHS_PER_CHUNK = 2;
+  // Increased maximum characters for a chunk
+  const MAX_CHUNK_SIZE = 14000; 
+  
+  // Track paragraph count in current chunk
+  let paragraphsInCurrentChunk = 0;
+  
+  // First pass: group paragraphs into chunks based on size and min paragraph count
   for (let i = 0; i < paragraphs.length; i++) {
     const paragraph = paragraphs[i];
     const trimmedParagraph = paragraph.trim();
@@ -384,88 +392,106 @@ function splitByParagraphs(content: string): string[] {
       return specialBlocks[parseInt(index, 10)];
     });
     
-    // Special case: if a restored paragraph is now very large, add it as a standalone chunk
+    // Special case: if a restored paragraph is very large, handle it separately
     if (processedParagraph.length > MAX_CHUNK_SIZE) {
-      // If we have a current chunk, add it first
+      // If we have a current chunk with content, add it first
       if (currentChunk) {
         result.push(currentChunk);
         currentChunk = "";
+        paragraphsInCurrentChunk = 0;
       }
       // Add the large paragraph as its own chunk
       result.push(processedParagraph);
       continue;
     }
     
-    // If this is the first paragraph or if adding this paragraph would make the chunk reasonable
-    if (!currentChunk || (currentChunk.length + processedParagraph.length <= MAX_CHUNK_SIZE)) {
+    // Normal paragraph handling with minimum paragraph count consideration
+    if (
+      !currentChunk || 
+      (
+        // If adding would keep us under max size AND
+        (currentChunk.length + processedParagraph.length <= MAX_CHUNK_SIZE) && 
+        // Either we don't have minimum paragraphs yet OR the chunk is still small
+        (paragraphsInCurrentChunk < MIN_PARAGRAPHS_PER_CHUNK || currentChunk.length < MIN_CHUNK_SIZE)
+      )
+    ) {
       // Add to current chunk
       if (currentChunk) {
         currentChunk += "\n\n" + processedParagraph;
       } else {
         currentChunk = processedParagraph;
       }
+      paragraphsInCurrentChunk++;
       
       // If we're at the last paragraph, add the current chunk to result
       if (i === paragraphs.length - 1 && currentChunk) {
         result.push(currentChunk);
-        currentChunk = "";
       }
     } else {
-      // Current chunk is big enough, add it to result and start a new one
+      // Current chunk meets our criteria, add it and start a new one
       result.push(currentChunk);
       currentChunk = processedParagraph;
+      paragraphsInCurrentChunk = 1;
       
-      // If we're at the last paragraph, add the current chunk to result
-      if (i === paragraphs.length - 1 && currentChunk) {
+      // If we're at the last paragraph, add this new chunk as well
+      if (i === paragraphs.length - 1) {
         result.push(currentChunk);
-        currentChunk = "";
       }
     }
   }
   
-  // Add the last chunk if it exists (this is a failsafe, should not be needed)
-  if (currentChunk) {
-    result.push(currentChunk);
-  }
-  
-  // Final pass: merge small chunks with larger chunks if possible
+  // Second pass: ensure minimum chunk size by merging small chunks
   if (result.length > 1) {
     const mergedResult: string[] = [];
     let mergedChunk = "";
+    let mergedParagraphCount = 0;
     
     for (let i = 0; i < result.length; i++) {
       const chunk = result[i];
+      const chunkParagraphCount = chunk.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
       
-      // If chunk is small and we can merge it
-      if (chunk.length < MIN_CHUNK_SIZE && mergedChunk) {
-        // Merge with previous chunk if it won't exceed max size
-        if (mergedChunk.length + chunk.length + 2 <= MAX_CHUNK_SIZE) {
-          mergedChunk += "\n\n" + chunk;
-        } else {
-          // Add previous merged chunk and start a new one
-          mergedResult.push(mergedChunk);
-          mergedChunk = chunk;
-        }
+      // If this chunk is too small or doesn't have enough paragraphs
+      const isTooSmall = chunk.length < MIN_CHUNK_SIZE || chunkParagraphCount < MIN_PARAGRAPHS_PER_CHUNK;
+      
+      if (isTooSmall && mergedChunk && (mergedChunk.length + chunk.length <= MAX_CHUNK_SIZE)) {
+        // Merge with the previous chunk
+        mergedChunk += "\n\n" + chunk;
+        mergedParagraphCount += chunkParagraphCount;
       } 
-      // If chunk is small and we don't have a previous chunk, try to merge with next chunk
-      else if (chunk.length < MIN_CHUNK_SIZE && !mergedChunk && i < result.length - 1) {
+      // If this chunk is too small but we don't have a previous chunk to merge with
+      else if (isTooSmall && !mergedChunk && i < result.length - 1) {
+        // Start a new merged chunk with this small one
         mergedChunk = chunk;
+        mergedParagraphCount = chunkParagraphCount;
       }
-      // For large chunks, add as is or start as a new merged chunk
+      // If this is a large enough chunk or we can't merge anymore
       else {
+        // If we have a merged chunk, add it first
         if (mergedChunk) {
           mergedResult.push(mergedChunk);
+          mergedChunk = "";
+          mergedParagraphCount = 0;
         }
-        mergedChunk = chunk;
+        
+        // Whether to start a new merged chunk or add as-is depends on size
+        if (isTooSmall) {
+          mergedChunk = chunk;
+          mergedParagraphCount = chunkParagraphCount;
+        } else {
+          mergedResult.push(chunk);
+        }
       }
     }
     
-    // Add the last merged chunk
+    // Add the last merged chunk if any
     if (mergedChunk) {
       mergedResult.push(mergedChunk);
     }
     
-    return mergedResult;
+    // If we successfully merged chunks, return that result
+    if (mergedResult.length > 0) {
+      return mergedResult;
+    }
   }
   
   // If we have no results but had content, return the original content

@@ -11,7 +11,8 @@ export async function processMarkdownForVectorStorage(
   const chunks: InsertDocumentationChunk[] = [];
   
   // Special case: if content is very short, just store it as a single chunk
-  if (content.trim().length < 800) {
+  // Increased threshold from 800 to 1000 to ensure more complete context
+  if (content.trim().length < 1000) {
     const metadata: Record<string, any> = {
       path: file.path,
       section: "full content",
@@ -236,10 +237,10 @@ function splitIntoSections(content: string): Section[] {
   // Process sections based on size - using larger chunks with improved context
   const processedSections: Section[] = [];
   
-  // Enhanced parameters for section processing
-  const MIN_SECTION_SIZE = 1000; // Increased minimum characters for a section
-  const MAX_SECTION_SIZE = 12000; // Increased maximum characters before splitting
-  const MIN_PARAGRAPHS_IN_SECTION = 2; // Ensure at least two paragraphs per section when possible
+  // Enhanced parameters for section processing with better context
+  const MIN_SECTION_SIZE = 1200; // Increased minimum characters for a section
+  const MAX_SECTION_SIZE = 14000; // Increased maximum characters before splitting
+  const MIN_PARAGRAPHS_IN_SECTION = 3; // Ensure at least three paragraphs per section when possible for better context
   
   // First pass: group sections by top-level heading to maintain better context
   let currentTopSection: Section | null = null;
@@ -421,9 +422,9 @@ function splitByParagraphs(content: string): string[] {
   
   // ENHANCED PARAMETERS:
   // Increased minimum characters for a chunk to encourage grouping more paragraphs
-  const MIN_CHUNK_SIZE = 800; 
-  // Minimum paragraphs per chunk - ensure at least two paragraphs per chunk when possible
-  const MIN_PARAGRAPHS_PER_CHUNK = 2;
+  const MIN_CHUNK_SIZE = 1000; 
+  // Minimum paragraphs per chunk - ensure at least three paragraphs per chunk when possible for better context
+  const MIN_PARAGRAPHS_PER_CHUNK = 3;
   // Increased maximum characters for a chunk
   const MAX_CHUNK_SIZE = 14000; 
   
